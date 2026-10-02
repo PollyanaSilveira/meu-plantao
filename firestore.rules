@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signed() { return request.auth != null; }
+    function isAdmin() { return signed() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function viraAdmin() { return signed() && existsAfter(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function temPerfil() { return signed() && exists(/databases/$(database)/documents/perfis/$(request.auth.uid)); }
+    function perfil() { return get(/databases/$(database)/documents/perfis/$(request.auth.uid)).data; }
+    function cfg() { return get(/databases/$(database)/documents/config/geral).data; }
+
+    // Gestores. A primeira conta de gestor é criada enquanto o sistema ainda não foi configurado.
+    // Depois disso, só um gestor pode adicionar outro.
+    match /admins/{uid} {
+      allow read: if signed() && (request.auth.uid == uid || isAdmin());
+      allow create: if signed() && (
+        (uid == request.auth.uid && !exists(/databases/$(database)/documents/config/geral)) || isAdmin());
+      allow delete: if isAdmin() && uid != request.auth.uid;
+    }
+
+    // Lista de imobiliárias da tela de login: pública para leitura.
+    match /publico/{doc} {
+      allow read: if true;
+      allow write: if viraAdmin();
+    }
+
+    // Ajustes da escala.
+    match /config/{doc} {
+      allow read: if signed();
+      allow write: if viraAdmin();
+    }
+
+    // Login do corretor: o id do documento é imobiliária--nome--ano e aponta para a conta dele.
+    // Só leitura direta (quem sabe os três dados), nunca listagem. Só o gestor cria e altera.
+    match /logins/{id} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && request.resource.data.keys().hasOnly(['email', 'senha', 'uid']);
+      allow delete: if isAdmin();
+    }
+
+    // Dados internos da conta de cada corretor: só o gestor.
+    match /credenciais/{uid} {
+      allow read, write: if isAdmin();
+    }
+
+    // Cadastro do corretor, feito pelo gestor. O corretor só lê o próprio.
+    // "inativos" guarda os meses (AAAA-MM) em que ele não participa da escala.
+    match /perfis/{uid} {
+      allow read: if signed() && (request.auth.uid == uid || isAdmin());
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['nome', 'parceiro', 'key', 'ano', 'inativos', 'criadoEm'])
+        && request.resource.data.nome is string && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 60;
+      allow update, delete: if isAdmin();
+    }
+
+    // Dias liberados para cada corretor em cada mês (id = uid_AAAA-MM).
+    // O corretor só altera a lista dos horários que escolheu, sem passar do limite.
+    match /liberacoes/{id} {
+      allow read: if isAdmin() || (signed() && resource.data.uid == request.auth.uid);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (signed() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['escolhidas'])
+        && request.resource.data.escolhidas.size() <= resource.data.limite);
+    }
+
+    // Nomes de quem está em cada horário, notas internas e imobiliária responsável: só o gestor lê.
+    match /privado/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Horários, sem nomes. O corretor vê só se está livre ou se é dele (corretorId é um código interno).
+    // O gestor cria, edita e exclui. O corretor só pega um horário livre num dia liberado para ele,
+    // ou devolve o próprio.
+    match /vagas/{id} {
+      function lib() { return /databases/$(database)/documents/liberacoes/$(request.auth.uid + '_' + resource.data.mes); }
+      function so(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
+      function escolher() {
+        return temPerfil() && cfg().aberta == true
+          && !perfil().get('inativos', []).hasAny([resource.data.mes])
+          && resource.data.aberta == true && resource.data.corretorId == null
+          && (resource.data.restrito == '' || resource.data.restrito == perfil().parceiro)
+          && so(['corretorId', 'escolhidoEm'])
+          && request.resource.data.corretorId == request.auth.uid
+          && get(lib()).data.dias.hasAny([resource.data.data])
+          && getAfter(lib()).data.escolhidas.hasAny([id]);
+      }
+      function desistir() {
+        return temPerfil() && cfg().aberta == true && cfg().desistir == true
+          && resource.data.corretorId == request.auth.uid
+          && so(['corretorId', 'escolhidoEm'])
+          && request.resource.data.corretorId == null
+          && !getAfter(lib()).data.escolhidas.hasAny([id]);
+      }
+      allow read: if isAdmin() || temPerfil();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || escolher() || desistir();
+    }
+  }
+}
