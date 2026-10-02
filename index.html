@@ -264,7 +264,7 @@ function excecoesUI(sc,titulo){
 const minhas=()=>todas().filter(minha).sort(sortV);
 function motivo(v){
   if(!cfg.aberta)return "Escala fechada";
-  if(!ativoNoMes(perfil,v.mes))return "Você não está ativo neste mês";
+  if(!ativoNoMes(perfil,v.mes))return "Você está desativado neste mês";
   const L=libDe(me.uid,v.mes);
   if(!L||!(L.dias||[]).includes(v.data))return "Dia não liberado para você";
   if(v.data<hojeStr)return "Data já passou";
@@ -436,7 +436,7 @@ function viewLiberar(){
   const lista=[...perfis.entries()].filter(([,p])=>ativoNoMes(p,mes)).map(([uid,p])=>({uid,p,L:libDe(uid,mes)})).sort((a,b)=>nomeParc(a.p.parceiro).localeCompare(nomeParc(b.p.parceiro))||a.p.nome.localeCompare(b.p.nome));
   const lib=lista.filter(x=>x.L&&(x.L.dias||[]).length).length;
   const inativos=[...perfis.values()].filter(p=>!ativoNoMes(p,mes)).length;
-  let h=`<div class="toolbar">${mesNav()}<span class="note">${lib} de ${lista.length} corretores ativos liberados em ${mesMin(mes)}${inativos?` · ${inativos} inativos neste mês (não aparecem aqui)`:""}</span></div>`;
+  let h=`<div class="toolbar">${mesNav()}<span class="note">${lib} de ${lista.length} corretores ativos liberados em ${mesMin(mes)}${inativos?` · ${inativos} desativados neste mês (não aparecem aqui)`:""}</span></div>`;
   h+=`<p class="note" style="margin:0">Escolha, para cada corretor, os dias em que ele pode fazer plantão e quantos plantões pode pegar. Quem não tiver dia liberado vê que não está liberado neste mês.</p>`;
   if(!diasComVaga.length)h+=`<div class="card note-card warn"><p>Ainda não há horários em ${nomeMes(mes)}. Crie os horários na aba “Horários” antes de liberar os dias.</p></div>`;
   if(lista.length){
@@ -521,7 +521,7 @@ function linhaCorretor(uid,p){
     ${p.ano?`<span class="note">nasc. ${esc(p.ano)}</span>`:`<span class="pill warn">Sem ano · sem acesso</span>`}
     <span class="acts">
     <button class="btn sm ${faz?"sec":"quiet"}" data-act="plantao" data-uid="${uid}" aria-pressed="${faz}" title="Clique para ${faz?"tirar da":"colocar na"} escala de plantão" ${ocupado?"disabled":""}>${faz?"✓ Faz plantão":"Não faz plantão"}</button>
-    ${faz?`<button class="btn sm ${at?"sec":"quiet"}" data-act="ativo" data-uid="${uid}" aria-pressed="${at}" title="Clique para ${at?"desativar":"ativar"} em ${mesMin(mes)}" ${ocupado?"disabled":""}>${at?"● Ativo":"○ Inativo"} em ${mesMin(mes)}</button>`:""}
+    ${faz?`<button class="btn sm ${at?"sec":"quiet"}" data-act="ativo" data-uid="${uid}" aria-pressed="${at}" title="Clique para ${at?"desativar":"ativar"} em ${mesMin(mes)}" ${ocupado?"disabled":""}>${at?"● Ativo":"○ Desativado"} em ${mesMin(mes)}</button>`:""}
     <button class="btn sm quiet" data-act="editcor" data-uid="${uid}" aria-expanded="${editCor===uid}" ${p.ano&&!creds.has(uid)?'disabled title="Atualize o acesso primeiro"':""}>Editar</button>
     ${remId===uid?`<button class="btn sm danger" data-act="rem" data-uid="${uid}">Confirmar remoção</button><button class="btn sm quiet" data-act="norem">Cancelar</button>`:`<button class="btn sm danger" data-act="askrem" data-uid="${uid}">Remover</button>`}
     </span></div>${ed}</div>`;
@@ -542,7 +542,7 @@ function viewCorretores(){
   const plantonistas=rows.filter(([,p])=>p.plantao!==false).length;
   h+=`<section class="card"><div class="toolbar"><h2>Corretores por imobiliária (${rows.length})</h2>
   <div class="row">${[["todos",`Todos (${rows.length})`],["plantao",`Fazem plantão (${plantonistas})`],["nao",`Não fazem plantão (${rows.length-plantonistas})`]].map(([k,l])=>`<button class="chip" data-act="corfiltro" data-v="${k}" aria-pressed="${corFiltro===k}">${l}</button>`).join("")}</div></div>
-  <p class="note">Cadastre todos os corretores de cada imobiliária. <b>Faz plantão</b> define quem pode ser liberado para a escala; só eles aparecem em “Liberar horários”. <b>Ativo/Inativo</b> vale só para ${mesMin(mes)}. Sem o ano de nascimento, o corretor ainda não consegue entrar.</p>
+  <p class="note">Cadastre todos os corretores de cada imobiliária. <b>Faz plantão</b> define quem pode ser liberado para a escala; só eles aparecem em “Liberar horários”. <b>Ativo/Desativado</b> vale só para ${mesMin(mes)}. Sem o ano de nascimento, o corretor ainda não consegue entrar.</p>
   ${rowsF.length?imobs.filter(x=>rowsF.some(([,p])=>p.parceiro===x.k)).concat(rowsF.some(([,p])=>!parc(p.parceiro))?[{k:"__sem",nome:"Sem imobiliária"}]:[]).map(im=>{
     const doGrupo=rowsF.filter(([,p])=>im.k==="__sem"?!parc(p.parceiro):p.parceiro===im.k),pl=doGrupo.filter(([,p])=>p.parceiro&&p.plantao!==false).length;
     return `<div class="stack" style="gap:8px"><div class="row" style="${cores(im.k)}"><span class="sw"></span><b>${esc(im.nome)}</b><span class="note">${doGrupo.length} ${doGrupo.length===1?"corretor":"corretores"} · ${pl} ${pl===1?"faz":"fazem"} plantão</span></div>
@@ -828,7 +828,7 @@ async function removerCorretor(uid){
 function alternarAtivo(uid){
   const p=perfis.get(uid),ina=new Set(p.inativos||[]),ativo=!ina.has(mes);
   ativo?ina.add(mes):ina.delete(mes);
-  return run(()=>updateDoc(doc(fs,"perfis",uid),{inativos:[...ina].sort()}),`${p.nome} ${ativo?"desativado(a)":"ativado(a)"} em ${mesMin(mes)}.`);
+  return run(()=>updateDoc(doc(fs,"perfis",uid),{inativos:[...ina].sort()}),`${p.nome}: ${ativo?"desativado":"ativo"} em ${mesMin(mes)}.`);
 }
 // Corretores cadastrados no formato antigo (login = imobiliária--nome, senha derivada do ano).
 const antigos=()=>[...perfis.entries()].filter(([uid,p])=>p.ano&&!creds.has(uid));
