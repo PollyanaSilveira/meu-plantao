@@ -49,7 +49,7 @@ service cloud.firestore {
     match /perfis/{uid} {
       allow read: if signed() && (request.auth.uid == uid || isAdmin());
       allow create: if isAdmin()
-        && request.resource.data.keys().hasOnly(['nome', 'parceiro', 'key', 'ano', 'inativos', 'criadoEm'])
+        && request.resource.data.keys().hasOnly(['nome', 'parceiro', 'key', 'ano', 'inativos', 'plantao', 'criadoEm'])
         && request.resource.data.nome is string && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 60;
       allow update, delete: if isAdmin();
     }
@@ -78,6 +78,9 @@ service cloud.firestore {
       function escolher() {
         return temPerfil() && cfg().aberta == true
           && !perfil().get('inativos', []).hasAny([resource.data.mes])
+          && perfil().get('plantao', true) == true
+          && !resource.data.get('excetoImob', []).hasAny([perfil().parceiro])
+          && !resource.data.get('excetoCor', []).hasAny([request.auth.uid])
           && resource.data.aberta == true && resource.data.corretorId == null
           && (resource.data.restrito == '' || resource.data.restrito == perfil().parceiro)
           && so(['corretorId', 'escolhidoEm'])
