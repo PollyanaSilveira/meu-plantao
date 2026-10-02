@@ -273,6 +273,7 @@ function authMsg(e){
   if(c==="auth/email-already-in-use")return "Já existe um acesso com este e-mail.";
   if(c==="auth/weak-password")return "A senha precisa ter pelo menos 6 caracteres.";
   if(c==="auth/invalid-email")return "Confira o e-mail digitado.";
+  if(c==="auth/unauthorized-domain"||c==="auth/requests-from-referer-are-blocked")return "Este endereço ainda não foi autorizado no Firebase (Authentication → Configurações → Domínios autorizados).";
   if(c==="auth/configuration-not-found")return "O login ainda não foi ativado no Firebase (Authentication → Vamos começar → E-mail/senha).";
   if(c==="auth/operation-not-allowed")return "O login por e-mail ainda não foi ativado no Firebase (veja o passo 3 do LEIA-ME).";
   return "Não foi possível entrar agora. Tente de novo.";
