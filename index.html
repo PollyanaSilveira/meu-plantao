@@ -793,7 +793,7 @@ async function cadastrar(nome,k,ano,emLote,plantao=true){
     const uid=cred.user.uid,b=writeBatch(fs);
     b.set(doc(fs,"credenciais",uid),{email,senha:pw});
     if(ano)b.set(doc(fs,"logins",loginId(key,ano)),{email,senha:pw,uid});
-    b.set(doc(fs,"perfis",uid),{nome,parceiro:k,key,ano,inativos:[],plantao:!!plantao,criadoEm:new Date().toISOString()});
+    b.set(doc(fs,"perfis",uid),{nome,parceiro:k,key,ano,inativos:[],...(plantao?{}:{plantao:false}),criadoEm:new Date().toISOString()});
     // Plantões já lançados com esse nome (ex.: escala de outubro) passam a ser deste corretor.
     todas().filter(v=>!v.corretorId&&v.nomeFixo&&(!v.parceiro||v.parceiro===k)&&casaNome(nome,v.nomeFixo)).forEach(v=>{b.update(doc(fs,"vagas",v.id),{corretorId:uid});b.set(doc(fs,"privado",v.id),{nomeFixo:""},{merge:true})});
     try{await b.commit()}catch(e){try{await cred.user.delete()}catch(x){} throw e}
