@@ -254,7 +254,7 @@ function quemEscolhe(v){
   return fora.length?"Todas, exceto "+fora.join(", "):"";
 }
 function excecoesUI(sc,titulo){
-  const E=exc[sc],cors=[...perfis.entries()].filter(([,p])=>p.plantao!==false).sort((a,b)=>nomeParc(a[1].parceiro).localeCompare(nomeParc(b[1].parceiro))||a[1].nome.localeCompare(b[1].nome));
+  const E=exc[sc],cors=[...perfis.entries()].filter(([,p])=>ativoNoMes(p,mes)).sort((a,b)=>nomeParc(a[1].parceiro).localeCompare(nomeParc(b[1].parceiro))||a[1].nome.localeCompare(b[1].nome));
   return `<div class="stack" style="gap:8px;background:var(--soft);border-radius:10px;padding:10px 12px">
   <span class="lbl">${titulo}</span>
   <div class="row"><span class="note">Imobiliárias:</span>${imobs.map(x=>`<button type="button" class="chip" style="${cores(x.k)}" data-act="exc" data-sc="${sc}" data-t="imob" data-k="${esc(x.k)}" aria-pressed="${E.imob.has(x.k)}"><span class="sw"></span>${esc(x.nome)}</button>`).join("")}</div>
@@ -517,11 +517,10 @@ function linhaCorretor(uid,p){
     <div class="field"><label for="ec-ano">Ano de nascimento</label><input type="text" id="ec-ano" inputmode="numeric" maxlength="4" value="${esc(dval("ec-ano",p.ano||""))}" placeholder="Ex.: 1990"></div>
     <div class="field" style="align-self:end"><div class="row"><button class="btn sm" type="submit" ${ocupado?"disabled":""}>Salvar</button><button class="btn sm quiet" type="button" data-act="editcor" data-uid="${uid}">Cancelar</button></div></div>
     <p class="why field wide">O corretor entra com exatamente este nome, esta imobiliária e este ano. Se você mudar algum deles, avise o corretor.</p></form>`;
-  return `<div class="cor" style="${cores(p.parceiro)}${faz&&at?"":";opacity:.7"}"><div class="cor-head"><span class="sw"></span><b>${esc(p.nome)}</b>
+  return `<div class="cor" style="${cores(p.parceiro)}${at?"":";opacity:.7"}"><div class="cor-head"><span class="sw"></span><b>${esc(p.nome)}</b>
     ${p.ano?`<span class="note">nasc. ${esc(p.ano)}</span>`:`<span class="pill warn">Sem ano · sem acesso</span>`}
     <span class="acts">
-    <button class="btn sm ${faz?"sec":"quiet"}" data-act="plantao" data-uid="${uid}" aria-pressed="${faz}" title="Clique para ${faz?"tirar da":"colocar na"} escala de plantão" ${ocupado?"disabled":""}>${faz?"✓ Faz plantão":"Não faz plantão"}</button>
-    ${faz?`<button class="btn sm ${at?"sec":"quiet"}" data-act="ativo" data-uid="${uid}" aria-pressed="${at}" title="Clique para ${at?"desativar":"ativar"} em ${mesMin(mes)}" ${ocupado?"disabled":""}>${at?"● Ativo":"○ Desativado"} em ${mesMin(mes)}</button>`:""}
+    <button class="btn sm ${at?"sec":"quiet"}" data-act="ativo" data-uid="${uid}" aria-pressed="${at}" title="Clique para ${at?"desativar":"ativar"} em ${mesMin(mes)}" ${ocupado?"disabled":""}>${at?"● Ativo":"○ Desativado"} em ${mesMin(mes)}</button>
     <button class="btn sm quiet" data-act="editcor" data-uid="${uid}" aria-expanded="${editCor===uid}" ${p.ano&&!creds.has(uid)?'disabled title="Atualize o acesso primeiro"':""}>Editar</button>
     ${remId===uid?`<button class="btn sm danger" data-act="rem" data-uid="${uid}">Confirmar remoção</button><button class="btn sm quiet" data-act="norem">Cancelar</button>`:`<button class="btn sm danger" data-act="askrem" data-uid="${uid}">Remover</button>`}
     </span></div>${ed}</div>`;
@@ -529,33 +528,33 @@ function linhaCorretor(uid,p){
 function viewCorretores(){
   const optsDe=(id,sel)=>imobs.map(x=>`<option value="${esc(x.k)}" ${dval(id,sel)===x.k?"selected":""}>${esc(x.nome)}</option>`).join("");
   const rows=[...perfis.entries()].sort((a,b)=>nomeParc(a[1].parceiro).localeCompare(nomeParc(b[1].parceiro))||a[1].nome.localeCompare(b[1].nome));
-  const ativos=rows.filter(([,p])=>ativoNoMes(p,mes)).length,semAno=rows.filter(([,p])=>!p.ano&&p.plantao!==false).length;
+  const ativos=rows.filter(([,p])=>ativoNoMes(p,mes)).length,semAno=rows.filter(([,p])=>!p.ano).length;
   const pend=naEscalaSemCadastro();
-  let h=`<div class="toolbar">${mesNav()}<span class="note">${ativos} plantonistas ativos em ${mesMin(mes)}${semAno?` · ${semAno} sem ano de nascimento (ainda sem acesso)`:""}</span></div>`;
+  let h=`<div class="toolbar">${mesNav()}<span class="note">${ativos} ativos em ${mesMin(mes)}${semAno?` · ${semAno} sem ano de nascimento (ainda sem acesso)`:""}</span></div>`;
   const ant=antigos();
   if(ant.length)h+=`<section class="card note-card warn"><h2>Atualizar acesso (${ant.length})</h2><p>${ant.map(([,p])=>esc(p.nome)).join(", ")} ${ant.length===1?"foi cadastrado(a)":"foram cadastrados"} no formato antigo. Clique para atualizar; sem isso, ${ant.length===1?"ele(a) não consegue":"eles não conseguem"} entrar e não dá para editar o cadastro.</p><div class="row"><button class="btn" data-act="converter" ${ocupado?"disabled":""}>Atualizar acesso</button></div></section>`;
   if(pend.length)h+=`<section class="card note-card"><h2>Corretores da escala sem cadastro (${pend.length})</h2>
     <p>Encontrei estes nomes na escala. Importe todos de uma vez e depois edite cada um para colocar o ano de nascimento, que libera o acesso.</p>
     <p class="note">${pend.map(x=>`${esc(x.nome)} <span class="why">(${esc(nomeParc(x.k))})</span>`).join(" · ")}</p>
     <div class="row"><button class="btn" data-act="importcor" ${ocupado?"disabled":""}>${importando?"Importando…":`Importar ${pend.length} ${pend.length===1?"corretor":"corretores"}`}</button></div></section>`;
-  const rowsF=rows.filter(([,p])=>corFiltro==="plantao"?p.plantao!==false:corFiltro==="nao"?p.plantao===false:true);
-  const plantonistas=rows.filter(([,p])=>p.plantao!==false).length;
+  const rowsF=rows.filter(([,p])=>corFiltro==="plantao"?ativoNoMes(p,mes):corFiltro==="nao"?!ativoNoMes(p,mes):true);
+  const plantonistas=rows.filter(([,p])=>ativoNoMes(p,mes)).length;
   h+=`<section class="card"><div class="toolbar"><h2>Corretores por imobiliária (${rows.length})</h2>
-  <div class="row">${[["todos",`Todos (${rows.length})`],["plantao",`Fazem plantão (${plantonistas})`],["nao",`Não fazem plantão (${rows.length-plantonistas})`]].map(([k,l])=>`<button class="chip" data-act="corfiltro" data-v="${k}" aria-pressed="${corFiltro===k}">${l}</button>`).join("")}</div></div>
-  <p class="note">Cadastre todos os corretores de cada imobiliária. <b>Faz plantão</b> define quem pode ser liberado para a escala; só eles aparecem em “Liberar horários”. <b>Ativo/Desativado</b> vale só para ${mesMin(mes)}. Sem o ano de nascimento, o corretor ainda não consegue entrar.</p>
+  <div class="row">${[["todos",`Todos (${rows.length})`],["plantao",`Ativos (${plantonistas})`],["nao",`Desativados (${rows.length-plantonistas})`]].map(([k,l])=>`<button class="chip" data-act="corfiltro" data-v="${k}" aria-pressed="${corFiltro===k}">${l}</button>`).join("")}</div></div>
+  <p class="note">Cadastre todos os corretores de cada imobiliária. <b>Ativo/Desativado</b> vale para ${mesMin(mes)} (mude o mês nas setas): só os ativos aparecem em “Liberar horários” e conseguem escolher horários. Os desativados continuam cadastrados. Sem o ano de nascimento, o corretor ainda não consegue entrar.</p>
   ${rowsF.length?imobs.filter(x=>rowsF.some(([,p])=>p.parceiro===x.k)).concat(rowsF.some(([,p])=>!parc(p.parceiro))?[{k:"__sem",nome:"Sem imobiliária"}]:[]).map(im=>{
-    const doGrupo=rowsF.filter(([,p])=>im.k==="__sem"?!parc(p.parceiro):p.parceiro===im.k),pl=doGrupo.filter(([,p])=>p.parceiro&&p.plantao!==false).length;
-    return `<div class="stack" style="gap:8px"><div class="row" style="${cores(im.k)}"><span class="sw"></span><b>${esc(im.nome)}</b><span class="note">${doGrupo.length} ${doGrupo.length===1?"corretor":"corretores"} · ${pl} ${pl===1?"faz":"fazem"} plantão</span></div>
+    const doGrupo=rowsF.filter(([,p])=>im.k==="__sem"?!parc(p.parceiro):p.parceiro===im.k),pl=doGrupo.filter(([,p])=>ativoNoMes(p,mes)).length;
+    return `<div class="stack" style="gap:8px"><div class="row" style="${cores(im.k)}"><span class="sw"></span><b>${esc(im.nome)}</b><span class="note">${doGrupo.length} ${doGrupo.length===1?"corretor":"corretores"} · ${pl} ${pl===1?"ativo":"ativos"} em ${mesMin(mes)}</span></div>
     <div class="list">${doGrupo.map(([uid,p])=>linhaCorretor(uid,p)).join("")}</div></div>`}).join(""):`<p class="note">${rows.length?"Nenhum corretor neste filtro.":"Nenhum corretor cadastrado ainda."}</p>`}</section>`;
   h+=`<section class="card"><h2>Cadastrar novo corretor</h2>
   <form class="form" data-form="novo">
   <div class="field"><label for="nc-nome">Nome do corretor</label><input type="text" id="nc-nome" maxlength="60" value="${esc(dval("nc-nome",""))}" placeholder="Ex.: Tarcyla Sodré" required></div>
   <div class="field"><label for="nc-imob">Imobiliária</label><select id="nc-imob" required><option value="">Selecione</option>${optsDe("nc-imob","")}</select></div>
   <div class="field"><label for="nc-ano">Ano de nascimento</label><input type="text" id="nc-ano" inputmode="numeric" maxlength="4" value="${esc(dval("nc-ano",""))}" placeholder="Ex.: 1990"></div>
-  <div class="field" style="align-self:center"><label class="check"><input type="checkbox" id="nc-plantao" ${dval("nc-plantao",true)?"checked":""}> Faz plantão</label></div>
+  <div class="field" style="align-self:center"><label class="check"><input type="checkbox" id="nc-plantao" ${dval("nc-plantao",true)?"checked":""}> Ativo</label></div>
   <div class="field" style="align-self:end"><button class="btn" type="submit" ${ocupado?"disabled":""}>Cadastrar corretor</button></div></form>
   <details><summary class="link" style="display:inline">Cadastrar vários de uma vez</summary>
-  <form class="stack" data-form="lote" style="margin-top:10px"><label for="nc-lote">Um corretor por linha: nome; imobiliária; ano; faz plantão (sim/não, opcional)</label>
+  <form class="stack" data-form="lote" style="margin-top:10px"><label for="nc-lote">Um corretor por linha: nome; imobiliária; ano; ativo (sim/não, opcional)</label>
   <textarea id="nc-lote" style="min-height:140px" placeholder="Tarcyla Sodré; SOLO; 1990&#10;Henrique Alves; TORRE; 1985&#10;Carla Souza; Realiza; 1979; não">${esc(dval("nc-lote",""))}</textarea>
   ${lote?`<p class="${lote.erros.length?"err":"note"}">${esc(lote.msg)}</p>${lote.erros.length?`<ul class="note">${lote.erros.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}`:""}
   <div class="row"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Cadastrar lista</button><span class="why">O nome da imobiliária precisa ser igual ao da lista de imobiliárias (maiúsculas e acentos não importam).</span></div></form></details></section>`;
@@ -770,7 +769,6 @@ async function act(a,ds){
     case "rem":{const uid=ds.uid;remId=null;return removerCorretor(uid)}
     case "editcor":editCor=editCor===ds.uid?null:ds.uid;remId=null;["ec-nome","ec-imob","ec-ano"].forEach(k=>delete drafts[k]);break;
     case "ativo":return alternarAtivo(ds.uid);
-    case "plantao":{const p=perfis.get(ds.uid),faz=p.plantao!==false;return run(()=>updateDoc(doc(fs,"perfis",ds.uid),{plantao:!faz}),`${p.nome} ${faz?"não faz mais plantão":"agora faz plantão"}.`)}
     case "corfiltro":corFiltro=ds.v;break;
     case "importcor":return importarDaEscala();
     case "converter":return converterAntigos();
@@ -826,9 +824,9 @@ async function removerCorretor(uid){
     await b.commit()},`${p.nome} removido(a). Os plantões dele(a) continuam na escala.`);
 }
 function alternarAtivo(uid){
-  const p=perfis.get(uid),ina=new Set(p.inativos||[]),ativo=!ina.has(mes);
+  const p=perfis.get(uid),ina=new Set(p.inativos||[]),ativo=ativoNoMes(p,mes);
   ativo?ina.add(mes):ina.delete(mes);
-  return run(()=>updateDoc(doc(fs,"perfis",uid),{inativos:[...ina].sort()}),`${p.nome}: ${ativo?"desativado":"ativo"} em ${mesMin(mes)}.`);
+  return run(()=>updateDoc(doc(fs,"perfis",uid),{inativos:[...ina].sort(),...(ativo?{}:{plantao:true})}),`${p.nome}: ${ativo?"desativado":"ativo"} em ${mesMin(mes)}.`);
 }
 // Corretores cadastrados no formato antigo (login = imobiliária--nome, senha derivada do ano).
 const antigos=()=>[...perfis.entries()].filter(([uid,p])=>p.ano&&!creds.has(uid));
