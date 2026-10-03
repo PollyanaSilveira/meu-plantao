@@ -685,7 +685,8 @@ function viewAjustes(){
   <div class="field wide"><label for="cf-av">Aviso para os corretores</label><textarea id="cf-av" maxlength="400" placeholder="Ex.: Escolha seus dias até sexta, 18h.">${esc(dval("cf-av",cfg.aviso||""))}</textarea></div>
   <div class="field"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Salvar ajustes</button></div></form></section>`;
   h+=`<section class="card"><h2>Imobiliárias</h2><p class="note">Aparecem na tela de entrada dos corretores. Clique em uma para renomear: os corretores e plantões dela continuam ligados, e ninguém perde o acesso.</p>
-  <div class="row">${imobs.map(p=>editImob===p.k?`<form class="row" data-form="renparc" data-k="${esc(p.k)}"><input type="text" id="rn-nome" maxlength="40" style="width:auto" value="${esc(dval("rn-nome",p.nome))}" aria-label="Novo nome de ${esc(p.nome)}"><button class="btn sm" type="submit">Salvar</button><button class="btn sm quiet" type="button" data-act="renparc" data-k="">Cancelar</button></form>`
+  <div class="row">${imobs.map(p=>editImob===p.k?`<form class="row" data-form="renparc" data-k="${esc(p.k)}"><input type="text" id="rn-nome" maxlength="40" style="width:auto" value="${esc(dval("rn-nome",p.nome))}" aria-label="Novo nome de ${esc(p.nome)}"><button class="btn sm" type="submit">Salvar</button><button class="btn sm quiet" type="button" data-act="renparc" data-k="">Cancelar</button>
+    <span class="row" style="gap:6px"><label for="jn-dest" class="note">ou juntar com</label><select id="jn-dest" style="width:auto"><option value="">Escolha…</option>${imobs.filter(x=>x.k!==p.k).map(x=>`<option value="${esc(x.k)}">${esc(x.nome)}</option>`).join("")}</select><button class="btn sm danger" type="button" data-act="juntar" data-k="${esc(p.k)}">Juntar</button></span></form>`
     :`<button class="chip" style="${cores(p.k)}" data-act="renparc" data-k="${esc(p.k)}" title="Renomear"><span class="sw"></span>${esc(p.nome)} <span class="why">${[...perfis.values()].filter(c=>c.parceiro===p.k).length}</span></button>`).join("")}</div>
   <form class="row" data-form="parc"><label for="np-nome">Nova</label><input type="text" id="np-nome" maxlength="40" style="width:auto;flex:1;min-width:0" value="${esc(dval("np-nome",""))}" placeholder="Nome da imobiliária"><button class="btn sm sec" type="submit">Adicionar</button></form></section>`;
   return h;
@@ -784,6 +785,15 @@ async function act(a,ds){
     case "editcor":editCor=editCor===ds.uid?null:ds.uid;remId=null;["ec-nome","ec-imob","ec-ano"].forEach(k=>delete drafts[k]);break;
     case "ativo":return alternarAtivo(ds.uid);
     case "corfiltro":corFiltro=ds.v;break;
+    case "juntar":{const de=ds.k,para=document.getElementById("jn-dest")?.value;if(!para){toast("Escolha com qual imobiliária juntar.");return}
+      if([...perfis.values()].some(c=>c.parceiro===de)){toast(`${nomeParc(de)} ainda tem corretores. Mude a imobiliária deles em Corretores → Editar e depois junte.`);return}
+      const nd=nomeParc(de),np=nomeParc(para);editImob=null;
+      return run(async()=>{const vs=todas().filter(v=>v.restrito===de||v.parceiro===de||(v.excetoImob||[]).includes(de));
+        for(let i=0;i<vs.length;i+=200){const b=writeBatch(fs);vs.slice(i,i+200).forEach(v=>{
+          const up={};if(v.restrito===de)up.restrito=para;if((v.excetoImob||[]).includes(de))up.excetoImob=[...new Set(v.excetoImob.map(x=>x===de?para:x))];
+          if(Object.keys(up).length)b.update(doc(fs,"vagas",v.id),up);
+          if(v.parceiro===de)b.set(doc(fs,"privado",v.id),{parceiro:para},{merge:true})});await b.commit()}
+        await updateDoc(doc(fs,"publico","imobiliarias"),{lista:imobs.filter(x=>x.k!==de)})},`${nd} foi juntada com ${np}. Os plantões de ${nd} agora são de ${np}.`)}
     case "renparc":editImob=ds.k||null;delete drafts["rn-nome"];break;
     case "importcor":return importarDaEscala();
     case "converter":return converterAntigos();
