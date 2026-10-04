@@ -220,7 +220,7 @@ let mes=hojeStr.slice(0,7),mesEscolhido=false,tab="minhas",confirmId=null,desist
 let selDias=new Set(),selTurnos=new Set(["10:00-14:00","14:00-17:00","17:00-20:00"]),turnosExtra=[],libDias=new Set();
 const drafts={};
 let relTipo="escala",relImob="",relCor="";
-let hpMeses="1",hpTorre=true,lbDow=new Set(),lbImob="",lbExcl=true,lbSel=new Set(),lbFora=new Set();
+let hpMeses="1",hpQuem=(()=>{try{return {tqs:"torre",sqs:"",dom:"",...JSON.parse(localStorage.getItem("mp-hpQuem")||"{}")}}catch(x){return {tqs:"torre",sqs:"",dom:""}}})(),lbDow=new Set(),lbImob="",lbExcl=true,lbSel=new Set(),lbFora=new Set();
 // Exceções: "nv" = criar horários, "lb" = liberar para todos. Cada uma guarda imobiliárias e corretores de fora.
 let nvModo="todas";const exc={nv:{imob:new Set(),cor:new Set()},lb:{imob:new Set(),cor:new Set()}};
 
@@ -488,17 +488,17 @@ function alvoLote(){return [...perfis.entries()].filter(([uid,p])=>ativoNoMes(p,
 function viewHorarios(){
   const tot=doMes(mes),liv=tot.filter(livre);
   let h=`<div class="toolbar">${mesNav()}</div><div class="stats"><div class="stat"><b>${tot.length}</b><span>horários em ${mesMin(mes)}</span></div><div class="stat"><b>${liv.length}</b><span>ainda livres</span></div><div class="stat"><b>${tot.filter(v=>v.corretorId).length}</b><span>escolhidos pelos corretores</span></div></div>`;
-  const plano=planoPadrao(+hpMeses,hpTorre),mesesTxt=mesesAPartir(mes,+hpMeses).map(m=>MESES[+m.slice(5,7)-1]).join(", ");
+  const plano=planoPadrao(+hpMeses),ajuste=ajustePadrao(+hpMeses),mesesTxt=mesesAPartir(mes,+hpMeses).map(m=>MESES[+m.slice(5,7)-1]).join(", ");
   h+=`<section class="card note-card"><h2>Horários padrão</h2>
   <div class="tablewrap"><table><thead><tr><th>Dias</th><th>Horários</th><th>Quem pode escolher</th></tr></thead><tbody>
-  <tr><td>Terça, quinta e sábado</td><td class="n">10h–14h · 14h–17h · 17h–20h</td><td>${hpTorre?"Só a TORRE":"Qualquer imobiliária"}</td></tr>
-  <tr><td>Segunda, quarta e sexta</td><td class="n">10h–15h · 15h–20h</td><td>Qualquer imobiliária</td></tr>
-  <tr><td>Domingo e feriado</td><td class="n">14h–20h</td><td>Qualquer imobiliária</td></tr></tbody></table></div>
+  <tr><td>Terça, quinta e sábado</td><td class="n">10h–14h · 14h–17h · 17h–20h</td><td><select id="hp-q-tqs" aria-label="Quem pode escolher" style="width:auto;min-width:14ch"><option value="">Qualquer imobiliária</option>${imobs.map(x=>`<option value="${esc(x.k)}" ${hpQuem.tqs===x.k?"selected":""}>Só ${esc(x.nome)}</option>`).join("")}</select></td></tr>
+  <tr><td>Segunda, quarta e sexta</td><td class="n">10h–15h · 15h–20h</td><td><select id="hp-q-sqs" aria-label="Quem pode escolher" style="width:auto;min-width:14ch"><option value="">Qualquer imobiliária</option>${imobs.map(x=>`<option value="${esc(x.k)}" ${hpQuem.sqs===x.k?"selected":""}>Só ${esc(x.nome)}</option>`).join("")}</select></td></tr>
+  <tr><td>Domingo e feriado</td><td class="n">14h–20h</td><td><select id="hp-q-dom" aria-label="Quem pode escolher" style="width:auto;min-width:14ch"><option value="">Qualquer imobiliária</option>${imobs.map(x=>`<option value="${esc(x.k)}" ${hpQuem.dom===x.k?"selected":""}>Só ${esc(x.nome)}</option>`).join("")}</select></td></tr></tbody></table></div>
   <div class="form">
   <div class="field"><label for="hp-meses">Gerar para</label><select id="hp-meses">${[["1",`${MESES[+mes.slice(5,7)-1]} ${mes.slice(0,4)}`],["2","Este mês e o próximo"],["3","Os próximos 3 meses"],["6","Os próximos 6 meses"],["12","Os próximos 12 meses"]].map(([v,l])=>`<option value="${v}" ${hpMeses===v?"selected":""}>${l}</option>`).join("")}</select></div>
-  <div class="field" style="align-self:center"><label class="check"><input type="checkbox" id="hp-torre" ${hpTorre?"checked":""}> Reservar terças, quintas e sábados para a TORRE</label></div>
   <div class="field wide"><div class="row"><button class="btn" data-act="padrao" ${!plano.length||ocupado?"disabled":""}>Gerar ${plano.length} ${plano.length===1?"horário":"horários"}</button>
-  <span class="why">${plano.length?`${mesesTxt}. Horários que já existem e dias que já passaram são ignorados. Feriados nacionais já entram automaticamente; feriados locais você cadastra em Ajustes.`:`Os horários padrão de ${mesesTxt} já estão criados.`}</span></div></div></div></section>`;
+  <span class="why">${plano.length?`${mesesTxt}. Horários que já existem e dias que já passaram são ignorados. Feriados nacionais já entram automaticamente; feriados locais você cadastra em Ajustes.`:`Os horários padrão de ${mesesTxt} já estão criados.`}</span></div></div>
+  ${ajuste.length?`<div class="field wide"><div class="row"><button class="btn sec" data-act="ajpadrao" ${ocupado?"disabled":""}>Aplicar a ${ajuste.length} ${ajuste.length===1?"horário livre já criado":"horários livres já criados"}</button><span class="why">Muda “quem pode escolher” nos horários livres de ${mesesTxt} que estão diferentes da tabela. Horários já escolhidos não mudam.</span></div></div>`:""}</div></section>`;
   if(!vagas.size)h+=`<section class="card note-card"><h2>Importar a escala de outubro</h2><p>Carrega os 69 plantões de outubro/2026 que já estavam montados.</p><div class="row"><button class="btn" data-act="importar" ${ocupado?"disabled":""}>Importar outubro/2026</button></div></section>`;
   const turnos=[...TURNOS.map(t=>t.join("-")),...turnosExtra.filter(t=>!TURNOS.some(x=>x.join("-")===t))];
   const total=selDias.size*selTurnos.size;
@@ -583,16 +583,24 @@ function turnosPadrao(d){
   return [["10:00","15:00"],["15:00","20:00"]];
 }
 function mesesAPartir(m,n){const out=[];for(let i=0;i<n;i++){const dt=new Date(+m.slice(0,4),+m.slice(5,7)-1+i,1);out.push(`${dt.getFullYear()}-${pad(dt.getMonth()+1)}`)}return out}
-function planoPadrao(n,torre){
+// Grupo do dia no padrão: tqs = terça/quinta/sábado, sqs = segunda/quarta/sexta, dom = domingo e feriado.
+function grupoDia(d){const w=dowOf(d);return (w===0||ehFeriado(d))?"dom":DIAS_TORRE.includes(w)?"tqs":"sqs"}
+const quemDoGrupo=g=>parc(hpQuem[g])?hpQuem[g]:"";
+function planoPadrao(n){
   const novos=[],existentes=todas();
   for(const m of mesesAPartir(mes,n))for(let d=1;d<=diasNoMes(m);d++){
     const ds=`${m}-${pad(d)}`;if(ds<hojeStr)continue;
-    const w=dowOf(ds),restrito=torre&&DIAS_TORRE.includes(w)&&!ehFeriado(ds)&&parc("torre")?"torre":"";
+    const restrito=quemDoGrupo(grupoDia(ds));
     for(const [ini,fim] of turnosPadrao(ds))
       if(!existentes.some(v=>v.data===ds&&v.ini===ini&&v.fim===fim))
         novos.push({mes:m,data:ds,ini,fim,restrito,local:"",obs:ehFeriado(ds)?"Feriado":"",aberta:true,corretorId:null,escolhidoEm:null});
   }
   return novos;
+}
+// Horários livres já criados (no padrão) cuja regra de "quem pode escolher" difere da escolhida agora.
+function ajustePadrao(n){
+  const ms=mesesAPartir(mes,n);
+  return todas().filter(v=>ms.includes(v.mes)&&v.data>=hojeStr&&livre(v)&&turnosPadrao(v.data).some(([a,b])=>a===v.ini&&b===v.fim)&&(v.restrito||"")!==quemDoGrupo(grupoDia(v.data)));
 }
 /* ---------- relatórios ---------- */
 const TIPOS={escala:"Escala do mês",corretor:"Resumo por corretor",livres:"Horários livres"};
@@ -751,7 +759,9 @@ async function act(a,ds){
     case "asklimpar":limparLivres=true;break;
     case "nolimpar":limparLivres=false;break;
     case "limpar":{limparLivres=false;const ids=doMes(mes).filter(livre).map(v=>v.id);return run(async()=>{for(let i=0;i<ids.length;i+=200){const b=writeBatch(fs);ids.slice(i,i+200).forEach(id=>{b.delete(doc(fs,"vagas",id));b.delete(doc(fs,"privado",id))});await b.commit()}},`${ids.length} horários livres excluídos.`)}
-    case "padrao":{const novos=planoPadrao(+hpMeses,hpTorre);if(!novos.length)return;
+    case "ajpadrao":{const vs=ajustePadrao(+hpMeses);if(!vs.length)return;
+      return run(async()=>{for(let i=0;i<vs.length;i+=400){const b=writeBatch(fs);vs.slice(i,i+400).forEach(v=>b.update(doc(fs,"vagas",v.id),{restrito:quemDoGrupo(grupoDia(v.data))}));await b.commit()}},`${vs.length} horários atualizados.`)}
+    case "padrao":{const novos=planoPadrao(+hpMeses);if(!novos.length)return;
       return run(async()=>{for(let i=0;i<novos.length;i+=400){const b=writeBatch(fs);novos.slice(i,i+400).forEach(v=>b.set(doc(collection(fs,"vagas")),v));await b.commit()}},`${novos.length} horários padrão criados. Agora libere os dias em “Liberar horários”.`)}
     case "importar":return run(async()=>{const r=await fetch("seed-outubro.json");const lista=await r.json();const b=writeBatch(fs);
       lista.forEach(v=>{const dono=[...perfis.entries()].find(([,p])=>(!v.parceiro||p.parceiro===v.parceiro)&&v.nomeFixo&&casaNome(p.nome,v.nomeFixo));
@@ -1011,7 +1021,8 @@ document.addEventListener("submit",e=>{e.preventDefault();submit(e.target)});
 const keep=e=>{const t=e.target;if(t.id&&t.type!=="password")drafts[t.id]=t.type==="checkbox"?t.checked:t.value;
   if(e.type==="change"&&t.id&&t.id.startsWith("rel-")){if(t.id==="rel-tipo")relTipo=t.value;if(t.id==="rel-imob"){relImob=t.value;relCor=""}if(t.id==="rel-cor")relCor=t.value;render()}
   if(e.type==="change"&&t.id==="nv-modo"){nvModo=t.value;render()}
-  if(e.type==="change"&&["hp-meses","hp-torre","lb-imob","lb-excl"].includes(t.id)){if(t.id==="hp-meses")hpMeses=t.value;if(t.id==="hp-torre")hpTorre=t.checked;if(t.id==="lb-imob")lbImob=t.value;if(t.id==="lb-excl")lbExcl=t.checked;render()}};
+  if(e.type==="change"&&t.id&&t.id.startsWith("hp-q-")){hpQuem[t.id.slice(5)]=t.value;try{localStorage.setItem("mp-hpQuem",JSON.stringify(hpQuem))}catch(x){}render()}
+  if(e.type==="change"&&["hp-meses","lb-imob","lb-excl"].includes(t.id)){if(t.id==="hp-meses")hpMeses=t.value;if(t.id==="lb-imob")lbImob=t.value;if(t.id==="lb-excl")lbExcl=t.checked;render()}};
 document.addEventListener("input",keep);document.addEventListener("change",keep);
 
 /* ---------- dados ---------- */
