@@ -97,7 +97,17 @@ service cloud.firestore {
       }
       allow read: if isAdmin() || temPerfil();
       allow create, delete: if isAdmin();
-      allow update: if isAdmin() || escolher() || desistir();
+      // Check-in e check-out: só o corretor do plantão, uma vez cada, com o horário do servidor.
+      function ponto(campo) {
+        return temPerfil() && resource.data.corretorId == request.auth.uid
+          && so([campo])
+          && resource.data.get(campo, null) == null
+          && request.resource.data[campo].keys().hasOnly(['em', 'dist', 'prec'])
+          && request.resource.data[campo].em == request.time;
+      }
+      function checkin() { return ponto('checkin'); }
+      function checkout() { return resource.data.get('checkin', null) != null && ponto('checkout'); }
+      allow update: if isAdmin() || escolher() || desistir() || checkin() || checkout();
     }
   }
 }

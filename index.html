@@ -198,7 +198,7 @@ td.n{font-variant-numeric:tabular-nums}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, collection, query, where, onSnapshot, getDoc, updateDoc, deleteDoc, addDoc, writeBatch, runTransaction, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, collection, query, where, onSnapshot, getDoc, updateDoc, deleteDoc, addDoc, writeBatch, runTransaction, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const DOW=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
@@ -608,12 +608,15 @@ function ajustePadrao(n){
   return todas().filter(v=>ms.includes(v.mes)&&v.data>=hojeStr&&livre(v)&&turnosPadrao(v.data).some(([a,b])=>a===v.ini&&b===v.fim)&&(v.restrito||"")!==quemDoGrupo(grupoDia(v.data)));
 }
 /* ---------- relatórios ---------- */
-const TIPOS={escala:"Escala do mês",corretor:"Resumo por corretor",livres:"Horários livres"};
+const TIPOS={escala:"Escala do mês",corretor:"Resumo por corretor",livres:"Horários livres",presenca:"Presença (check-in)"};
 function statusDe(v){return livre(v)?"Livre":(v.corretorId||v.nomeFixo)?"Preenchido":"Reservado"}
 function relDados(){
   let lista=doMes(mes);
   if(relImob)lista=lista.filter(v=>parcDe(v)===relImob);
   if(relCor)lista=lista.filter(v=>v.corretorId===relCor);
+  if(relTipo==="presenca"){const ag=new Date();lista=lista.filter(v=>v.corretorId&&quando(v.data,v.ini)<=ag);
+    const ls=lista.map(v=>{const p=presenca(v,ag);return {v,p}});
+    return {cab:["Data","Horário","Corretor","Imobiliária","Check-in","Check-out","Situação"],linhas:ls.map(({v,p})=>[ddmm(v.data),`${v.ini} às ${v.fim}`,quem(v)||"—",nomeParc(parcDe(v))||"—",hm(p.ci),hm(tsData(v.checkout)),p.txt]),total:ls.length,horas:Math.round(ls.reduce((a,{p})=>a+(p.min||0),0)/6)/10}}
   if(relTipo==="livres"){lista=lista.filter(livre);return {cab:["Data","Dia","Horário","Exclusivo para","Local"],linhas:lista.map(v=>[ddmm(v.data),DOW[dowOf(v.data)],`${v.ini} às ${v.fim}`,nomeParc(v.restrito)||"Qualquer imobiliária",v.local||"—"]),total:lista.length,horas:lista.reduce((a,v)=>a+hrs(v),0)}}
   if(relTipo==="corretor"){
     const g=new Map();
@@ -651,11 +654,110 @@ const ICONES={
   ajustes:IC('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'),
   minhas:IC('<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>'),
   escolher:IC('<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4M12 12.5v5M9.5 15h5"/>'),
+  checkin:IC('<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><path d="M9.5 10l1.8 1.8L15 8.2"/>'),
   sair:IC('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10"/>'),
   seta:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
 };
 let menuAberto=false,editCor=null,importando=false,corFiltro="todos",editImob=null;
 let creds=new Map();
+/* ---------- check-in / check-out ---------- */
+// Horário do plantão como Date (Brasília/Bahia, UTC−3).
+const quando=(d,h)=>new Date(`${d}T${h}:00-03:00`);
+const tsData=x=>x&&x.em&&typeof x.em.toDate==="function"?x.em.toDate():null;
+const hm=d=>d?`${pad(d.getHours())}:${pad(d.getMinutes())}`:"—";
+const durTxt=min=>{min=Math.max(0,Math.round(min));return `${Math.floor(min/60)}h${pad(min%60)}`};
+const tolerancia=()=>+(cfg.tolerancia??10);
+const JANELA_ANTES=30; // minutos antes do início em que o check-in já é aceito
+function distanciaM(a,b){const R=6371000,r=x=>x*Math.PI/180,dLa=r(b.lat-a.lat),dLo=r(b.lng-a.lng);
+  const h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;return Math.round(2*R*Math.asin(Math.sqrt(h)))}
+function posicaoAtual(){
+  return new Promise((ok,erro)=>{
+    if(!navigator.geolocation){erro(new Error("Este aparelho não informa a localização."));return}
+    navigator.geolocation.getCurrentPosition(p=>ok({lat:p.coords.latitude,lng:p.coords.longitude,prec:Math.round(p.coords.accuracy)}),
+      e=>erro(new Error(e.code===1?"Permita o acesso à localização para fazer o check-in (nas configurações do navegador, em Localização).":e.code===3?"A localização demorou a responder. Tente de novo perto da entrada do stand.":"Não foi possível obter sua localização. Ative o GPS e tente de novo.")),
+      {enableHighAccuracy:true,timeout:20000,maximumAge:0});
+  });
+}
+// Situação de presença de um plantão.
+function presenca(v,agora=new Date()){
+  const ini=quando(v.data,v.ini),fim=quando(v.data,v.fim),ci=tsData(v.checkin),co=tsData(v.checkout);
+  if(!v.corretorId&&!v.nomeFixo)return {cod:"vazio",txt:livre(v)?"Livre":"Sem corretor",cor:"muted"};
+  if(!v.corretorId)return {cod:"semapp",txt:"Sem acesso ao app",cor:"muted"};
+  if(ci){
+    const atraso=Math.round((ci-ini)/60000),tarde=atraso>tolerancia();
+    if(co)return {cod:"ok",txt:`Concluído · ${durTxt((co-ci)/60000)}${tarde?` · atrasou ${atraso} min`:""}`,cor:tarde?"warn":"ok",ci,co,atraso,min:(co-ci)/60000};
+    if(agora>new Date(fim.getTime()+2*3600000))return {cod:"semco",txt:`Sem check-out · entrou ${hm(ci)}`,cor:"warn",ci,atraso};
+    return {cod:"em",txt:`Em plantão desde ${hm(ci)}${tarde?` · atrasou ${atraso} min`:""}`,cor:tarde?"warn":"ok",ci,atraso};
+  }
+  if(agora<ini)return {cod:"aguarda",txt:"Aguardando",cor:"muted"};
+  if(agora<fim)return {cod:"atrasado",txt:`Não chegou · ${Math.round((agora-ini)/60000)} min de atraso`,cor:"bad"};
+  return {cod:"falta",txt:"Falta",cor:"bad"};
+}
+const pillPres=p=>`<span class="pill ${p.cor==="ok"?"ok":p.cor==="warn"||p.cor==="bad"?"warn":""}" style="${p.cor==="bad"?"background:var(--badbg);color:var(--bad)":""}">${esc(p.txt)}</span>`;
+async function marcarPonto(id,tipo){
+  if(ocupado)return;
+  const v=todas().find(x=>x.id===id),st=cfg.stand;
+  if(!st||st.lat==null){toast("O gestor ainda não definiu a localização do stand. Avise a coordenação.");return}
+  ocupado=true;pontoMsg={id,txt:"Obtendo sua localização…"};render();
+  try{
+    const pos=await posicaoAtual(),dist=distanciaM(pos,st),raio=+(st.raio||150),folga=Math.min(pos.prec,100);
+    if(dist>raio+folga){pontoMsg={id,txt:`Você está a ${dist} m do stand (limite de ${raio} m). Faça o ${tipo==="checkin"?"check-in":"check-out"} no stand.`,erro:true};return}
+    await updateDoc(doc(fs,"vagas",id),{[tipo]:{em:serverTimestamp(),dist,prec:pos.prec}});
+    pontoMsg=null;toast(tipo==="checkin"?`Check-in feito. Bom plantão!`:`Check-out feito. Obrigado!`);
+  }catch(e){console.error(e);pontoMsg={id,txt:e.code?errMsg(e):e.message,erro:true}}
+  finally{ocupado=false;render()}
+}
+let pontoMsg=null,presDia=hojeStr;
+function viewCheckinCorretor(){
+  const agora=new Date(),hoje=minhas().filter(v=>v.data===hojeStr&&v.corretorId===me.uid);
+  const prox=minhas().filter(v=>v.data>hojeStr)[0];
+  let h=`<div><span class="eyebrow">Hoje · ${pad(dnum(hojeStr))}/${hojeStr.slice(5,7)}</span></div>`;
+  if(!hoje.length)return h+`<div class="vazio"><b>Você não tem plantão hoje</b><span>${prox?`Seu próximo plantão é ${DOW[dowOf(prox.data)].toLowerCase()}, ${ddmm(prox.data)}, das ${prox.ini} às ${prox.fim}.`:"Quando tiver plantão, o check-in aparece aqui no dia."}</span></div>`;
+  h+=hoje.map(v=>{const p=presenca(v,agora),ini=quando(v.data,v.ini),fim=quando(v.data,v.fim),ci=tsData(v.checkin),co=tsData(v.checkout);
+    const abre=new Date(ini.getTime()-JANELA_ANTES*60000),podeIn=!ci&&agora>=abre&&agora<=fim,podeOut=ci&&!co&&agora<=new Date(fim.getTime()+2*3600000);
+    let botao="";
+    if(podeIn)botao=`<button class="btn lg" data-act="checkin" data-id="${v.id}" ${ocupado?"disabled":""}>Fazer check-in</button>`;
+    else if(podeOut)botao=`<button class="btn lg sec" data-act="checkout" data-id="${v.id}" ${ocupado?"disabled":""}>Fazer check-out</button>`;
+    const aviso=!ci&&agora<abre?`<p class="note">O check-in abre às ${hm(abre)}, 30 minutos antes do início.</p>`:"";
+    const msg=pontoMsg&&pontoMsg.id===v.id?`<p class="${pontoMsg.erro?"err":"note"}">${esc(pontoMsg.txt)}</p>`:"";
+    return `<section class="card note-card"><div class="toolbar"><h2>${esc(v.ini)} às ${esc(v.fim)}</h2>${pillPres(p)}</div>
+    ${v.local?`<p class="note">Local: ${esc(v.local)}</p>`:""}
+    <div class="stats"><div class="stat"><b>${hm(ci)}</b><span>check-in${v.checkin&&v.checkin.dist!=null?` · a ${v.checkin.dist} m`:""}</span></div><div class="stat"><b>${hm(co)}</b><span>check-out</span></div><div class="stat"><b>${ci?durTxt(((co||agora)-ci)/60000):"—"}</b><span>${co?"no plantão":"até agora"}</span></div></div>
+    ${aviso}${msg}${botao}
+    ${botao?`<p class="why">Ao tocar, o celular pede sua localização. O sistema guarda só a distância até o stand, não onde você está.</p>`:""}</section>`}).join("");
+  return h;
+}
+function viewCheckinGestor(){
+  const agora=new Date(),dia=doMes(presDia.slice(0,7)).filter(v=>v.data===presDia&&(v.corretorId||v.nomeFixo));
+  const st=cfg.stand;
+  let h=`<div class="toolbar"><div class="mesnav"><button class="iconbtn" data-act="presdia" data-d="-1" aria-label="Dia anterior">‹</button><b>${DOW[dowOf(presDia)]} ${ddmm(presDia)}</b><button class="iconbtn" data-act="presdia" data-d="1" aria-label="Próximo dia">›</button></div>
+  ${presDia!==hojeStr?`<button class="btn sm quiet" data-act="presdia" data-d="0">Hoje</button>`:""}</div>`;
+  if(!st||st.lat==null)h+=`<div class="card note-card warn"><p>Defina a localização do stand em <b>Ajustes → Local do stand</b>. Sem ela, os corretores não conseguem fazer check-in.</p></div>`;
+  h+=dia.length?`<section class="card"><div class="tablewrap"><table><thead><tr><th>Horário</th><th>Corretor</th><th>Check-in</th><th>Check-out</th><th>Situação</th></tr></thead><tbody>${dia.map(v=>{const p=presenca(v,agora);
+    return `<tr><td class="n">${esc(v.ini)}–${esc(v.fim)}</td><td>${esc(quem(v)||"—")} <span class="why">${esc(nomeParc(parcDe(v)))}</span></td><td class="n">${hm(p.ci)}${v.checkin&&v.checkin.dist!=null?` <span class="why">${v.checkin.dist} m</span>`:""}</td><td class="n">${hm(tsData(v.checkout))}</td><td>${pillPres(p)}</td></tr>`}).join("")}</tbody></table></div></section>`
+    :`<div class="vazio"><b>Nenhum plantão com corretor neste dia</b></div>`;
+  // resumo do mês
+  const m=presDia.slice(0,7),g=new Map();
+  doMes(m).filter(v=>v.corretorId&&quando(v.data,v.ini)<=agora).forEach(v=>{const p=presenca(v,agora),k=v.corretorId;
+    if(!g.has(k))g.set(k,{nome:quem(v),imob:nomeParc(parcDe(v)),n:0,pres:0,faltas:0,atrasos:0,min:0});
+    const x=g.get(k);x.n++;if(p.ci)x.pres++;if(p.cod==="falta")x.faltas++;if(p.atraso>tolerancia())x.atrasos++;if(p.min)x.min+=p.min});
+  const rows=[...g.values()].sort((a,b)=>a.imob.localeCompare(b.imob)||a.nome.localeCompare(b.nome));
+  h+=`<section class="card"><h2>Resumo de ${nomeMes(m)} até agora</h2><p class="note">Atraso conta a partir de ${tolerancia()} minutos depois do início (ajuste em Ajustes).</p>
+  ${rows.length?`<div class="tablewrap"><table><thead><tr><th>Corretor</th><th>Imobiliária</th><th>Plantões</th><th>Presenças</th><th>Faltas</th><th>Atrasos</th><th>Horas</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.nome)}</td><td>${esc(r.imob)}</td><td class="n">${r.n}</td><td class="n">${r.pres}</td><td class="n" style="${r.faltas?"color:var(--bad);font-weight:700":""}">${r.faltas}</td><td class="n">${r.atrasos}</td><td class="n">${durTxt(r.min)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">Nenhum plantão com corretor cadastrado já começou neste mês.</p>`}</section>`;
+  return h;
+}
+function cardLocalStand(){
+  const st=cfg.stand||{};
+  return `<section class="card"><h2>Local do stand (check-in)</h2>
+  <p>O corretor só consegue fazer check-in e check-out dentro deste raio. Para definir, vá até o stand com o celular, entre como gestor e toque em <b>Usar minha localização atual</b>.</p>
+  <p class="note">${st.lat!=null?`Definido: ${(+st.lat).toFixed(5)}, ${(+st.lng).toFixed(5)} · raio de ${st.raio||150} m`:"Ainda não definido."}</p>
+  <div class="row"><button class="btn" data-act="standaqui" ${ocupado?"disabled":""}>Usar minha localização atual</button></div>
+  <form class="form" data-form="stand">
+  <div class="field"><label for="sd-coord">Ou cole as coordenadas (Google Maps)</label><input type="text" id="sd-coord" value="${esc(dval("sd-coord",st.lat!=null?`${st.lat}, ${st.lng}`:""))}" placeholder="-14.79, -39.27"></div>
+  <div class="field"><label for="sd-raio">Raio aceito (metros)</label><input type="number" id="sd-raio" min="30" max="1000" value="${esc(dval("sd-raio",st.raio||150))}"></div>
+  <div class="field"><label for="sd-tol">Tolerância de atraso (minutos)</label><input type="number" id="sd-tol" min="0" max="120" value="${esc(dval("sd-tol",tolerancia()))}"></div>
+  <div class="field" style="align-self:end"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Salvar</button></div></form></section>`;
+}
 /* ---------- calendário (.ics) ---------- */
 // Horários do stand são de Brasília/Bahia (UTC−3, sem horário de verão): convertidos para UTC no arquivo.
 const icsUTC=(d,h)=>{const dt=new Date(Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10),+h.slice(0,2)+3,+h.slice(3,5)));return dt.toISOString().replace(/[-:]/g,"").slice(0,15)+"Z"};
@@ -718,6 +820,7 @@ function viewAjustes(){
   <div class="field" style="align-self:center"><label class="check"><input type="checkbox" id="cf-des" ${dval("cf-des",cfg.desistir!==false)?"checked":""}> Corretor pode desistir enquanto a escala estiver em aberto</label></div>
   <div class="field wide"><label for="cf-av">Aviso para os corretores</label><textarea id="cf-av" maxlength="400" placeholder="Ex.: Escolha seus dias até sexta, 18h.">${esc(dval("cf-av",cfg.aviso||""))}</textarea></div>
   <div class="field"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Salvar ajustes</button></div></form></section>`;
+  h+=cardLocalStand();
   h+=`<section class="card"><h2>Imobiliárias</h2><p class="note">Aparecem na tela de entrada dos corretores. Clique em uma para renomear: os corretores e plantões dela continuam ligados, e ninguém perde o acesso.</p>
   <div class="row">${imobs.map(p=>editImob===p.k?`<form class="row" data-form="renparc" data-k="${esc(p.k)}"><input type="text" id="rn-nome" maxlength="40" style="width:auto" value="${esc(dval("rn-nome",p.nome))}" aria-label="Novo nome de ${esc(p.nome)}"><button class="btn sm" type="submit">Salvar</button><button class="btn sm quiet" type="button" data-act="renparc" data-k="">Cancelar</button>
     <span class="row" style="gap:6px"><label for="jn-dest" class="note">ou juntar com</label><select id="jn-dest" style="width:auto"><option value="">Escolha…</option>${imobs.filter(x=>x.k!==p.k).map(x=>`<option value="${esc(x.k)}">${esc(x.nome)}</option>`).join("")}</select><button class="btn sm danger" type="button" data-act="juntar" data-k="${esc(p.k)}">Juntar</button></span></form>`
@@ -735,12 +838,12 @@ function render(){
   else if(fase==="carregando")h=`<div class="login"><div class="login-head">${LOGO}<h1>Meu Plantão</h1><p>Carregando…</p></div></div>`;
   else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<h1>Meu Plantão</h1></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
   else{
-    const T=isAdmin?[["escala","Escala"],["horarios","Horários"],["corretores","Corretores",perfis.size],["liberar","Liberar horários"],["relatorios","Relatórios"],["ajustes","Ajustes"]]
-      :[["minhas","Meus plantões",minhas().filter(v=>v.data>=hojeStr).length],["escolher","Escolher horários"],["escala","Meu calendário"]];
+    const T=isAdmin?[["escala","Escala"],["checkin","Check-in"],["horarios","Horários"],["corretores","Corretores",perfis.size],["liberar","Liberar horários"],["relatorios","Relatórios"],["ajustes","Ajustes"]]
+      :[["minhas","Meus plantões",minhas().filter(v=>v.data>=hojeStr).length],["checkin","Check-in"],["escolher","Escolher horários"],["escala","Meu calendário"]];
     const nome=isAdmin?"Gestor":esc(perfil.nome.split(" ")[0]);
     const sub=isAdmin?esc(me.email||""):esc(nomeParc(perfil.parceiro));
     const ini=isAdmin?"G":esc(perfil.nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase());
-    const corpo=tab==="minhas"?viewMinhas():tab==="escolher"?viewEscolher():tab==="escala"?viewEscala():tab==="liberar"?viewLiberar():tab==="horarios"?viewHorarios():tab==="corretores"?viewCorretores():tab==="relatorios"?viewRelatorios():viewAjustes();
+    const corpo=tab==="checkin"?(isAdmin?viewCheckinGestor():viewCheckinCorretor()):tab==="minhas"?viewMinhas():tab==="escolher"?viewEscolher():tab==="escala"?viewEscala():tab==="liberar"?viewLiberar():tab==="horarios"?viewHorarios():tab==="corretores"?viewCorretores():tab==="relatorios"?viewRelatorios():viewAjustes();
     h=`<div class="wrap"><header class="top"><div class="marca-nome">${LOGO}<span class="sep" aria-hidden="true"></span><h1>Meu Plantão</h1></div>
     <div class="who"><span class="pill ${cfg.aberta?"ok":"warn"}">${cfg.aberta?"Escala em aberto":"Escala fechada"}</span>
     <div class="usermenu"><button class="userbtn" data-act="menu" aria-haspopup="menu" aria-expanded="${menuAberto}"><span class="av">${ini}</span><span class="nm">${nome}</span>${ICONES.seta}</button>
@@ -774,7 +877,7 @@ async function act(a,ds){
     case "claim":return claim(ds.id);
     case "release":desistirId=null;return release(ds.id);
     case "edit":editId=editId===ds.id?null:ds.id;delId=null;tab="escala";render();setTimeout(()=>document.getElementById("s-"+ds.id)?.scrollIntoView({block:"nearest"}),60);return;
-    case "liberar":{const v=todas().find(x=>x.id===ds.id);return run(async()=>{const b=writeBatch(fs);b.update(doc(fs,"vagas",v.id),{corretorId:null,escolhidoEm:null,aberta:true});b.set(doc(fs,"privado",v.id),{nomeFixo:"",parceiro:""},{merge:true});await tirarDaLib(b,v);await b.commit()},"Horário liberado para escolha.")}
+    case "liberar":{const v=todas().find(x=>x.id===ds.id);return run(async()=>{const b=writeBatch(fs);b.update(doc(fs,"vagas",v.id),{corretorId:null,escolhidoEm:null,aberta:true,checkin:null,checkout:null});b.set(doc(fs,"privado",v.id),{nomeFixo:"",parceiro:""},{merge:true});await tirarDaLib(b,v);await b.commit()},"Horário liberado para escolha.")}
     case "askdel":delId=ds.id;break;
     case "nodel":delId=null;break;
     case "del":{const v={id:ds.id,...vagas.get(ds.id)};editId=delId=null;return run(async()=>{const b=writeBatch(fs);b.delete(doc(fs,"vagas",v.id));b.delete(doc(fs,"privado",v.id));await tirarDaLib(b,v);await b.commit()},"Horário excluído.")}
@@ -817,6 +920,12 @@ async function act(a,ds){
     case "askrem":remId=ds.uid;break;
     case "norem":remId=null;break;
     case "pdf":return baixarPdf();
+    case "checkin":return marcarPonto(ds.id,"checkin");
+    case "checkout":return marcarPonto(ds.id,"checkout");
+    case "presdia":{if(+ds.d===0)presDia=hojeStr;else{const dt=quando(presDia,"12:00");dt.setDate(dt.getDate()+ +ds.d);presDia=`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`}break}
+    case "standaqui":{if(ocupado)return;ocupado=true;render();
+      try{const pos=await posicaoAtual();await updateDoc(doc(fs,"config","geral"),{stand:{lat:pos.lat,lng:pos.lng,raio:+((cfg.stand&&cfg.stand.raio)||150)}});delete drafts["sd-coord"];toast(`Local do stand salvo (precisão de ${pos.prec} m).`)}
+      catch(e){toast(e.code?errMsg(e):e.message)}finally{ocupado=false;render()}return}
     case "ics":{const v=todas().find(x=>x.id===ds.id);if(v)baixarIcs([v],`plantao-${v.data}.ics`);return}
     case "icstodos":{const l=minhas().filter(v=>v.data>=hojeStr);if(l.length)baixarIcs(l,"meus-plantoes.ics");return}
     case "rem":{const uid=ds.uid;remId=null;return removerCorretor(uid)}
@@ -1007,6 +1116,12 @@ async function submit(form){
     }
     ocupado=false;drafts["nc-lote"]=sobra.join("\n");
     lote={msg:`${ok} ${ok===1?"corretor cadastrado":"corretores cadastrados"}.${erros.length?` ${erros.length} com problema (ficaram na caixa para corrigir):`:""}`,erros};render()}
+  else if(f==="stand"){const c=g("sd-coord").split(/[,;\s]+/).filter(Boolean).map(Number),raio=Math.max(30,parseInt(g("sd-raio"))||150),tol=Math.max(0,parseInt(g("sd-tol"))||0);
+    let stand=cfg.stand||null;
+    if(c.length===2&&c.every(x=>isFinite(x))&&Math.abs(c[0])<=90&&Math.abs(c[1])<=180)stand={lat:c[0],lng:c[1],raio};
+    else if(g("sd-coord")){toast("Coordenadas inválidas. Use o formato: -14.79, -39.27");return}
+    else if(stand)stand={...stand,raio};
+    await run(()=>updateDoc(doc(fs,"config","geral"),{...(stand?{stand}:{}),tolerancia:tol}),"Local do stand salvo.");["sd-coord","sd-raio","sd-tol"].forEach(k=>delete drafts[k]);render()}
   else if(f==="cfg"){
     const fer=g("cf-fer").split(/[,;\s]+/).filter(Boolean).map(s=>{const m=s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);return m?`${m[3]||mes.slice(0,4)}-${pad(+m[2])}-${pad(+m[1])}`:null}).filter(Boolean);
     await run(()=>updateDoc(doc(fs,"config","geral"),{desistir:g("cf-des"),aviso:g("cf-av"),feriados:fer}),"Ajustes salvos.");["cf-des","cf-av","cf-fer"].forEach(k=>delete drafts[k]);render()}
@@ -1080,6 +1195,7 @@ async function iniciar(u){
   }
   tab=isAdmin?"escala":"minhas";fase="ok";render();
 }
+setInterval(()=>{if(fase==="ok"&&tab==="checkin"&&!ocupado&&!(document.activeElement&&document.activeElement.id))render()},60000);
 if(configurado){
   onSnapshot(doc(fs,"publico","imobiliarias"),s=>{imobs=s.exists()?(s.data().lista||[]):[];render()},e=>console.error(e));
   onAuthStateChanged(auth,u=>{
