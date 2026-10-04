@@ -176,6 +176,7 @@ td.n{font-variant-numeric:tabular-nums}
 .cor{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:grid;gap:10px}
 .cor-head{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
 .cor-head .acts{margin-left:auto}
+.slot .acts .btn svg{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
 .switch{all:unset;box-sizing:border-box;flex:none;width:42px;height:24px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;transition:background .15s}
 .switch .knob{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
 .switch[aria-checked="true"]{background:var(--ok)}
@@ -346,9 +347,11 @@ function slotLine(v,o={}){
     if(confirmId===v.id)extra=`<div class="confirm"><span>Confirmar plantão em <b>${ddmm(v.data)}</b>, ${esc(v.ini)} às ${esc(v.fim)}?</span><button class="btn sm" data-act="claim" data-id="${v.id}" ${ocupado?"disabled":""}>Confirmar</button><button class="btn sm quiet" data-act="cancel">Cancelar</button></div>`;
     else acts=m?`<span class="why">${esc(m)}</span>`:`<button class="btn sm" data-act="ask" data-id="${v.id}">Escolher</button>`;
   }
+  const calBtn=o.mine&&mine&&v.data>=hojeStr?`<button class="btn sm quiet" data-act="ics" data-id="${v.id}" title="Adicionar ao calendário do celular, com lembretes">${ICONES.escala}Calendário</button>`:"";
+  if(calBtn)acts=calBtn;
   if(o.mine&&v.corretorId===me.uid&&v.data>=hojeStr&&cfg.aberta&&cfg.desistir){
     if(desistirId===v.id)extra=`<div class="confirm danger"><span>Devolver este plantão para os outros corretores?</span><button class="btn sm danger" data-act="release" data-id="${v.id}" ${ocupado?"disabled":""}>Desistir do plantão</button><button class="btn sm quiet" data-act="cancel">Manter</button></div>`;
-    else acts=`<button class="btn sm quiet" data-act="askrel" data-id="${v.id}">Desistir</button>`;
+    else acts=calBtn+`<button class="btn sm quiet" data-act="askrel" data-id="${v.id}">Desistir</button>`;
   }
   if(isAdmin&&o.admin){acts=`<button class="btn sm quiet" data-act="edit" data-id="${v.id}" aria-expanded="${editId===v.id}">${editId===v.id?"Fechar":"Editar"}</button>`;if(editId===v.id)extra=editForm(v)}
   return `<div class="slot ${o.pick&&!isL&&!mine?"trava":""}" id="s-${v.id}" style="${cores(p)}"><span class="sw"></span><span class="hr">${esc(v.ini)} às ${esc(v.fim)}</span>${who}${v.local?`<span class="loc">${esc(v.local)}</span>`:""}${v.obs?`<span class="note">${esc(v.obs)}</span>`:""}${isAdmin&&v.nota?`<span class="note">Nota: ${esc(v.nota)}</span>`:""}<span class="acts">${acts}</span>${extra}</div>`;
@@ -382,7 +385,8 @@ function calendario(lista){
 function viewMinhas(){
   const ms=minhas(),prox=ms.filter(v=>v.data>=hojeStr),pas=ms.filter(v=>v.data<hojeStr);
   const totH=prox.reduce((a,v)=>a+hrs(v),0);
-  let h=`<div><span class="eyebrow">Próximos plantões</span><div>${prox.length} ${prox.length===1?"plantão":"plantões"} · ${totH}h</div></div>`;
+  let h=`<div class="toolbar"><div><span class="eyebrow">Próximos plantões</span><div>${prox.length} ${prox.length===1?"plantão":"plantões"} · ${totH}h</div></div>${prox.length?`<button class="btn sm sec" data-act="icstodos">Adicionar todos ao calendário</button>`:""}</div>
+  ${prox.length?`<p class="note" style="margin:0">O calendário do celular (iPhone/iCloud, Google ou Outlook) avisa 1 dia antes e 2 horas antes de cada plantão. Se você desistir de um plantão, apague o evento do calendário.</p>`:""}`;
   h+=prox.length?agenda(prox,{mine:1,showMes:1}):`<div class="vazio"><b>Você ainda não tem plantões marcados</b><span>Quando o gestor liberar dias para você, escolha seus horários em “Escolher horários”.</span></div>`;
   if(pas.length)h+=`<button class="btn sm quiet" data-act="passados" style="justify-self:start">${verPassados?"Ocultar":"Ver"} plantões anteriores (${pas.length})</button>${verPassados?agenda([...pas].reverse(),{showMes:1}):""}`;
   return h;
@@ -652,6 +656,27 @@ const ICONES={
 };
 let menuAberto=false,editCor=null,importando=false,corFiltro="todos",editImob=null;
 let creds=new Map();
+/* ---------- calendário (.ics) ---------- */
+// Horários do stand são de Brasília/Bahia (UTC−3, sem horário de verão): convertidos para UTC no arquivo.
+const icsUTC=(d,h)=>{const dt=new Date(Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10),+h.slice(0,2)+3,+h.slice(3,5)));return dt.toISOString().replace(/[-:]/g,"").slice(0,15)+"Z"};
+const icsTxt=t=>String(t||"").replace(/\\/g,"\\\\").replace(/[,;]/g,m=>"\\"+m).replace(/\n/g,"\\n");
+function icsEvento(v){
+  return ["BEGIN:VEVENT",`UID:${v.id}@meuplantao-almeidacarneiro`,`DTSTAMP:${new Date().toISOString().replace(/[-:]/g,"").slice(0,15)}Z`,
+    `DTSTART:${icsUTC(v.data,v.ini)}`,`DTEND:${icsUTC(v.data,v.fim)}`,
+    `SUMMARY:${icsTxt("Plantão · Almeida Carneiro")}`,
+    `LOCATION:${icsTxt("Stand de Vendas – Shopping Jequitibá"+(v.local?" ("+v.local+")":""))}`,
+    `DESCRIPTION:${icsTxt(`Plantão das ${v.ini} às ${v.fim}.${v.obs?" "+v.obs:""} Meu Plantão: https://pollyanasilveira.github.io/meu-plantao/`)}`,
+    "BEGIN:VALARM","ACTION:DISPLAY","TRIGGER:-P1D",`DESCRIPTION:${icsTxt("Amanhã você tem plantão às "+v.ini)}`,"END:VALARM",
+    "BEGIN:VALARM","ACTION:DISPLAY","TRIGGER:-PT2H",`DESCRIPTION:${icsTxt("Seu plantão começa às "+v.ini)}`,"END:VALARM",
+    "END:VEVENT"].join("\r\n");
+}
+function baixarIcs(lista,nome){
+  const txt=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Almeida Carneiro//Meu Plantão//PT-BR","CALSCALE:GREGORIAN","METHOD:PUBLISH",...lista.map(icsEvento),"END:VCALENDAR"].join("\r\n");
+  const url=URL.createObjectURL(new Blob([txt],{type:"text/calendar;charset=utf-8"}));
+  const a=document.createElement("a");a.href=url;a.download=nome;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
+  toast(lista.length===1?"Abra o arquivo para adicionar ao calendário.":`${lista.length} plantões prontos: abra o arquivo para adicionar ao calendário.`);
+}
 let logoPngCache=null;
 function logoPng(){
   if(logoPngCache)return Promise.resolve(logoPngCache);
@@ -792,6 +817,8 @@ async function act(a,ds){
     case "askrem":remId=ds.uid;break;
     case "norem":remId=null;break;
     case "pdf":return baixarPdf();
+    case "ics":{const v=todas().find(x=>x.id===ds.id);if(v)baixarIcs([v],`plantao-${v.data}.ics`);return}
+    case "icstodos":{const l=minhas().filter(v=>v.data>=hojeStr);if(l.length)baixarIcs(l,"meus-plantoes.ics");return}
     case "rem":{const uid=ds.uid;remId=null;return removerCorretor(uid)}
     case "editcor":editCor=editCor===ds.uid?null:ds.uid;remId=null;["ec-nome","ec-imob","ec-ano"].forEach(k=>delete drafts[k]);break;
     case "ativo":return alternarAtivo(ds.uid);
