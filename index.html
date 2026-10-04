@@ -176,6 +176,13 @@ td.n{font-variant-numeric:tabular-nums}
 .cor{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:grid;gap:10px}
 .cor-head{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
 .cor-head .acts{margin-left:auto}
+.dobra-card>:first-child{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dobra-card>:first-child::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-left:auto;margin-right:4px;transition:transform .15s;flex:none}
+.dobra-card.fechado>:first-child::after{transform:rotate(-45deg)}
+.dobra-card.fechado>:not(:first-child){display:none!important}
+.dobra-card>:first-child:hover{opacity:.85}
+.grupo-imob{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.grupo-imob+.grupo-imob{margin-top:8px}
 .slot .acts .btn svg{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
 .switch{all:unset;box-sizing:border-box;flex:none;width:42px;height:24px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;transition:background .15s}
 .switch .knob{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
@@ -449,12 +456,12 @@ function viewLiberar(){
   const lib=lista.filter(x=>x.L&&(x.L.dias||[]).length).length;
   const inativos=[...perfis.values()].filter(p=>!ativoNoMes(p,mes)).length;
   let h=`<div class="toolbar">${mesNav()}<span class="note">${lib} de ${lista.length} corretores ativos liberados em ${mesMin(mes)}${inativos?` · ${inativos} desativados neste mês (não aparecem aqui)`:""}</span></div>`;
-  h+=`<p class="note" style="margin:0">Escolha, para cada corretor, os dias em que ele pode fazer plantão e quantos plantões pode pegar. Quem não tiver dia liberado vê que não está liberado neste mês.</p>`;
+
   if(!diasComVaga.length)h+=`<div class="card note-card warn"><p>Ainda não há horários em ${nomeMes(mes)}. Crie os horários na aba “Horários” antes de liberar os dias.</p></div>`;
   if(lista.length){
     const qtd=alvoLote().length,diasB=diasLote();
     const comCor=imobs;
-    h+=`<section class="card"><h2>Liberar em grupo</h2><p class="note">1) Marque as imobiliárias. 2) Na lista de corretores, deixe marcados só os que vão estar disponíveis. 3) Escolha os dias da semana e o limite.</p>
+    h+=`<section class="card dobra-card" data-dobra="lbgrupo"><h2>Liberar em grupo</h2><p class="note">1) Marque as imobiliárias. 2) Na lista de corretores, deixe marcados só os que vão estar disponíveis. 3) Escolha os dias da semana e o limite.</p>
     <div class="lbl">1. Imobiliárias</div>
     <div class="row">${comCor.map(x=>{const n=lista.filter(({p})=>p.parceiro===x.k).length;return `<button class="chip" style="${cores(x.k)}${n?"":";opacity:.55"}" data-act="lbsel" data-k="${esc(x.k)}" aria-pressed="${lbSel.has(x.k)}" title="${n?`${n} corretores ativos`:"Sem corretores ativos neste mês"}"><span class="sw"></span>${esc(x.nome)} <span class="why">${n}</span></button>`}).join("")}
     ${comCor.length>1?`<button class="link" data-act="lbselall">${comCor.every(x=>lbSel.has(x.k))?"Desmarcar todas":"Marcar todas"}</button>`:""}</div>
@@ -472,7 +479,7 @@ function viewLiberar(){
     <span class="why">${!lbSel.size?"Marque ao menos uma imobiliária.":!qtd?"Nenhum corretor marcado.":diasB.length?diasB.map(ddmm).join(", "):"Escolha os dias da semana."}</span></div></section>`;
   }
   if(!lista.length)return h+`<div class="vazio"><b>Nenhum corretor cadastrado ainda</b><span>Cadastre os corretores na aba “Corretores”. Depois, libere os dias de cada um aqui.</span></div>`;
-  h+=`<div class="list">`+lista.map(({uid,p,L})=>{
+  const linhaLib=({uid,p,L})=>{
     const dias=(L&&L.dias)||[],usados=(L&&L.escolhidas||[]).length;
     const status=dias.length?`<span class="pill ok">${dias.length} ${dias.length===1?"dia":"dias"} · até ${L.limite} · escolheu ${usados}</span>`:`<span class="pill">Não liberado</span>`;
     let ed="";
@@ -485,7 +492,10 @@ function viewLiberar(){
       <div class="row"><button class="btn sm" type="submit" ${ocupado?"disabled":""}>Salvar liberação (${libDias.size} ${libDias.size===1?"dia":"dias"})</button>${L?`<button class="btn sm danger" type="button" data-act="libdel" data-uid="${uid}">Remover liberação</button>`:""}<button class="btn sm quiet" type="button" data-act="libfechar">Cancelar</button></div></form>`;
     }
     return `<div class="cor" style="${cores(p.parceiro)}"><div class="cor-head"><span class="sw"></span><b>${esc(p.nome)}</b><span class="note">${esc(nomeParc(p.parceiro))}</span>${status}${dias.length?`<span class="note">${dias.map(ddmm).join(", ")}</span>`:""}<span class="acts"><button class="btn sm ${libEdit===uid?"quiet":"sec"}" data-act="libabrir" data-uid="${uid}">${libEdit===uid?"Fechar":"Liberar dias"}</button></span></div>${ed}</div>`;
-  }).join("")+`</div>`;
+  };
+  h+=`<section class="card"><h2>Liberar por corretor</h2><p class="note">Clique na imobiliária para ver os corretores dela.</p>`+imobs.filter(x=>lista.some(({p})=>p.parceiro===x.k)).map(x=>{
+    const cs=lista.filter(({p})=>p.parceiro===x.k),lib=cs.filter(({L})=>L&&(L.dias||[]).length).length;
+    return `<div class="stack grupo-imob dobra-card" data-dobra="lib-${esc(x.k)}" style="gap:8px"><div class="row" style="${cores(x.k)}"><span class="sw"></span><b>${esc(x.nome)}</b><span class="note">${cs.length} ${cs.length===1?"corretor":"corretores"} · ${lib} liberados</span></div><div class="list">${cs.map(linhaLib).join("")}</div></div>`}).join("")+`</section>`;
   return h;
 }
 function diasLote(){return [...new Set(doMes(mes).filter(v=>lbDow.has(dowOf(v.data))&&v.data>=hojeStr&&(!v.restrito||lbSel.has(v.restrito))).map(v=>v.data))].sort()}
@@ -508,7 +518,7 @@ function viewHorarios(){
   const turnos=[...TURNOS.map(t=>t.join("-")),...turnosExtra.filter(t=>!TURNOS.some(x=>x.join("-")===t))];
   const total=selDias.size*selTurnos.size;
   const optsP=imobs.map(x=>`<option value="${esc(x.k)}" ${dval("nv-parc","")===x.k?"selected":""}>${esc(x.nome)}</option>`).join("");
-  h+=`<section class="card"><h2>Criar horários avulsos</h2><p>Para dias ou turnos fora do padrão. Marque os dias e os turnos. Depois, libere os dias para cada corretor na aba “Liberar horários”.</p>
+  h+=`<section class="card dobra-card" data-dobra="avulsos"><h2>Criar horários avulsos</h2><p>Para dias ou turnos fora do padrão. Marque os dias e os turnos. Depois, libere os dias para cada corretor na aba “Liberar horários”.</p>
   <div class="row"><span class="lbl">Dias:</span><button class="chip" data-act="dias" data-q="uteis">Seg a sex</button><button class="chip" data-act="dias" data-q="fds">Sáb e dom</button><button class="chip" data-act="dias" data-q="todos">Mês inteiro</button><button class="chip" data-act="dias" data-q="nenhum">Limpar</button></div>
   <div class="cal pick">${gradeDias((ds,d)=>{const c=tot.filter(v=>v.data===ds).length;return `<div class="day"><button class="dbtn" data-act="dia" data-d="${ds}" aria-pressed="${selDias.has(ds)}" ${ds<hojeStr?'aria-disabled="true"':""}><b>${pad(d)}</b><span>${c?c+" já":""}</span></button></div>`})}</div>
   <div class="row"><span class="lbl">Turnos:</span>${turnos.map(t=>`<button class="chip" data-act="turno" data-t="${t}" aria-pressed="${selTurnos.has(t)}">${t.replace("-"," às ")}</button>`).join("")}</div>
@@ -558,9 +568,9 @@ function viewCorretores(){
   <p class="note">Clique no botão ao lado do nome para <b>ativar ou desativar</b> o corretor em ${mesMin(mes)} (mude o mês nas setas). Só os ativos aparecem em “Liberar horários” e conseguem escolher horários. Os desativados continuam cadastrados. Sem o ano de nascimento, o corretor ainda não consegue entrar.</p>
   ${rowsF.length?imobs.filter(x=>rowsF.some(([,p])=>p.parceiro===x.k)).concat(rowsF.some(([,p])=>!parc(p.parceiro))?[{k:"__sem",nome:"Sem imobiliária"}]:[]).map(im=>{
     const doGrupo=rowsF.filter(([,p])=>im.k==="__sem"?!parc(p.parceiro):p.parceiro===im.k),pl=doGrupo.filter(([,p])=>ativoNoMes(p,mes)).length;
-    return `<div class="stack" style="gap:8px"><div class="row" style="${cores(im.k)}"><span class="sw"></span><b>${esc(im.nome)}</b><span class="note">${doGrupo.length} ${doGrupo.length===1?"corretor":"corretores"} · ${pl} ${pl===1?"ativo":"ativos"} em ${mesMin(mes)}</span></div>
+    return `<div class="stack grupo-imob dobra-card" data-dobra="cor-${esc(im.k)}" style="gap:8px"><div class="row" style="${cores(im.k)}"><span class="sw"></span><b>${esc(im.nome)}</b><span class="note">${doGrupo.length} ${doGrupo.length===1?"corretor":"corretores"} · ${pl} ${pl===1?"ativo":"ativos"} em ${mesMin(mes)}</span></div>
     <div class="list">${doGrupo.map(([uid,p])=>linhaCorretor(uid,p)).join("")}</div></div>`}).join(""):`<p class="note">${rows.length?"Nenhum corretor neste filtro.":"Nenhum corretor cadastrado ainda."}</p>`}</section>`;
-  h+=`<section class="card"><h2>Cadastrar novo corretor</h2>
+  h+=`<section class="card dobra-card" data-dobra="novocor"><h2>Cadastrar novo corretor</h2>
   <form class="form" data-form="novo">
   <div class="field"><label for="nc-nome">Nome do corretor</label><input type="text" id="nc-nome" maxlength="60" value="${esc(dval("nc-nome",""))}" placeholder="Ex.: Tarcyla Sodré" required></div>
   <div class="field"><label for="nc-imob">Imobiliária</label><select id="nc-imob" required><option value="">Selecione</option>${optsDe("nc-imob","")}</select></div>
@@ -658,6 +668,7 @@ const ICONES={
   sair:IC('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10"/>'),
   seta:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
 };
+let abertos=(()=>{try{return new Set(JSON.parse(localStorage.getItem("mp-abertos")||"[]"))}catch(x){return new Set()}})();
 let menuAberto=false,editCor=null,importando=false,corFiltro="todos",editImob=null;
 let creds=new Map();
 /* ---------- check-in / check-out ---------- */
@@ -742,13 +753,13 @@ function viewCheckinGestor(){
     if(!g.has(k))g.set(k,{nome:quem(v),imob:nomeParc(parcDe(v)),n:0,pres:0,faltas:0,atrasos:0,min:0});
     const x=g.get(k);x.n++;if(p.ci)x.pres++;if(p.cod==="falta")x.faltas++;if(p.atraso>tolerancia())x.atrasos++;if(p.min)x.min+=p.min});
   const rows=[...g.values()].sort((a,b)=>a.imob.localeCompare(b.imob)||a.nome.localeCompare(b.nome));
-  h+=`<section class="card"><h2>Resumo de ${nomeMes(m)} até agora</h2><p class="note">Atraso conta a partir de ${tolerancia()} minutos depois do início (ajuste em Ajustes).</p>
+  h+=`<section class="card dobra-card" data-dobra="resumo"><h2>Resumo de ${nomeMes(m)} até agora</h2><p class="note">Atraso conta a partir de ${tolerancia()} minutos depois do início (ajuste em Ajustes).</p>
   ${rows.length?`<div class="tablewrap"><table><thead><tr><th>Corretor</th><th>Imobiliária</th><th>Plantões</th><th>Presenças</th><th>Faltas</th><th>Atrasos</th><th>Horas</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.nome)}</td><td>${esc(r.imob)}</td><td class="n">${r.n}</td><td class="n">${r.pres}</td><td class="n" style="${r.faltas?"color:var(--bad);font-weight:700":""}">${r.faltas}</td><td class="n">${r.atrasos}</td><td class="n">${durTxt(r.min)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">Nenhum plantão com corretor cadastrado já começou neste mês.</p>`}</section>`;
   return h;
 }
 function cardLocalStand(){
   const st=cfg.stand||{};
-  return `<section class="card"><h2>Local do stand (check-in)</h2>
+  return `<section class="card dobra-card" data-dobra="stand"><h2>Local do stand (check-in)</h2>
   <p>O corretor só consegue fazer check-in e check-out dentro deste raio. Para definir, vá até o stand com o celular, entre como gestor e toque em <b>Usar minha localização atual</b>.</p>
   <p class="note">${st.lat!=null?`Definido: ${(+st.lat).toFixed(5)}, ${(+st.lng).toFixed(5)} · raio de ${st.raio||150} m`:"Ainda não definido."}</p>
   <div class="row"><button class="btn" data-act="standaqui" ${ocupado?"disabled":""}>Usar minha localização atual</button></div>
@@ -821,7 +832,7 @@ function viewAjustes(){
   <div class="field wide"><label for="cf-av">Aviso para os corretores</label><textarea id="cf-av" maxlength="400" placeholder="Ex.: Escolha seus dias até sexta, 18h.">${esc(dval("cf-av",cfg.aviso||""))}</textarea></div>
   <div class="field"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Salvar ajustes</button></div></form></section>`;
   h+=cardLocalStand();
-  h+=`<section class="card"><h2>Imobiliárias</h2><p class="note">Aparecem na tela de entrada dos corretores. Clique em uma para renomear: os corretores e plantões dela continuam ligados, e ninguém perde o acesso.</p>
+  h+=`<section class="card dobra-card" data-dobra="imobs"><h2>Imobiliárias</h2><p class="note">Aparecem na tela de entrada dos corretores. Clique em uma para renomear: os corretores e plantões dela continuam ligados, e ninguém perde o acesso.</p>
   <div class="row">${imobs.map(p=>editImob===p.k?`<form class="row" data-form="renparc" data-k="${esc(p.k)}"><input type="text" id="rn-nome" maxlength="40" style="width:auto" value="${esc(dval("rn-nome",p.nome))}" aria-label="Novo nome de ${esc(p.nome)}"><button class="btn sm" type="submit">Salvar</button><button class="btn sm quiet" type="button" data-act="renparc" data-k="">Cancelar</button>
     <span class="row" style="gap:6px"><label for="jn-dest" class="note">ou juntar com</label><select id="jn-dest" style="width:auto"><option value="">Escolha…</option>${imobs.filter(x=>x.k!==p.k).map(x=>`<option value="${esc(x.k)}">${esc(x.nome)}</option>`).join("")}</select><button class="btn sm danger" type="button" data-act="juntar" data-k="${esc(p.k)}">Juntar</button></span></form>`
     :`<button class="chip" style="${cores(p.k)}" data-act="renparc" data-k="${esc(p.k)}" title="Renomear"><span class="sw"></span>${esc(p.nome)} <span class="why">${[...perfis.values()].filter(c=>c.parceiro===p.k).length}</span></button>`).join("")}</div>
@@ -853,6 +864,7 @@ function render(){
   }
   document.body.classList.toggle("modo-login",fase!=="ok");
   root.innerHTML=h;
+  root.querySelectorAll("[data-dobra]").forEach(el=>{if(!abertos.has(el.dataset.dobra))el.classList.add("fechado")});
   if(fid){const n=document.getElementById(fid);if(n){n.focus();try{if(ss!=null)n.setSelectionRange(ss,se)}catch(e){}}}
 }
 
@@ -1156,7 +1168,12 @@ async function submit(form){
     const usadas=imobs.map(p=>p.cor);let cor=[...Array(13).keys()].find(c=>!usadas.includes(c));if(cor===undefined)cor=imobs.length%13;
     await run(()=>updateDoc(doc(fs,"publico","imobiliarias"),{lista:[...imobs,{k,nome,cor}]}),`${nome} adicionada.`);delete drafts["np-nome"];render()}
 }
-document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");
+document.addEventListener("click",e=>{
+  const hd=e.target.closest(".dobra-card>:first-child");
+  if(hd&&!e.target.closest("[data-act],button,input,select,textarea,label,a")){const c=hd.parentElement,k=c.dataset.dobra;
+    c.classList.toggle("fechado");c.classList.contains("fechado")?abertos.delete(k):abertos.add(k);
+    try{localStorage.setItem("mp-abertos",JSON.stringify([...abertos]))}catch(x){}return}
+  const b=e.target.closest("[data-act]");
   if(menuAberto&&(!b||b.dataset.act!=="menu")&&!e.target.closest(".dropdown")){menuAberto=false;if(!b){render();return}}
   if(!b)return;e.preventDefault();act(b.dataset.act,b.dataset)});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&menuAberto){menuAberto=false;render()}});
