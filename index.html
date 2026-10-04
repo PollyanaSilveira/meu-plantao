@@ -347,7 +347,7 @@ function slotLine(v,o={}){
     if(confirmId===v.id)extra=`<div class="confirm"><span>Confirmar plantão em <b>${ddmm(v.data)}</b>, ${esc(v.ini)} às ${esc(v.fim)}?</span><button class="btn sm" data-act="claim" data-id="${v.id}" ${ocupado?"disabled":""}>Confirmar</button><button class="btn sm quiet" data-act="cancel">Cancelar</button></div>`;
     else acts=m?`<span class="why">${esc(m)}</span>`:`<button class="btn sm" data-act="ask" data-id="${v.id}">Escolher</button>`;
   }
-  const calBtn=o.mine&&mine&&v.data>=hojeStr?`<button class="btn sm quiet" data-act="ics" data-id="${v.id}" title="Adicionar ao calendário do celular, com lembretes">${ICONES.escala}Calendário</button>`:"";
+  const calBtn=o.mine&&mine&&v.data>=hojeStr?`<button class="btn sm quiet" data-act="ics" data-id="${v.id}" title="Incluir no calendário do celular, com lembretes">${ICONES.escala}Incluir no Calendário</button>`:"";
   if(calBtn)acts=calBtn;
   if(o.mine&&v.corretorId===me.uid&&v.data>=hojeStr&&cfg.aberta&&cfg.desistir){
     if(desistirId===v.id)extra=`<div class="confirm danger"><span>Devolver este plantão para os outros corretores?</span><button class="btn sm danger" data-act="release" data-id="${v.id}" ${ocupado?"disabled":""}>Desistir do plantão</button><button class="btn sm quiet" data-act="cancel">Manter</button></div>`;
@@ -385,7 +385,7 @@ function calendario(lista){
 function viewMinhas(){
   const ms=minhas(),prox=ms.filter(v=>v.data>=hojeStr),pas=ms.filter(v=>v.data<hojeStr);
   const totH=prox.reduce((a,v)=>a+hrs(v),0);
-  let h=`<div class="toolbar"><div><span class="eyebrow">Próximos plantões</span><div>${prox.length} ${prox.length===1?"plantão":"plantões"} · ${totH}h</div></div>${prox.length?`<button class="btn sm sec" data-act="icstodos">Adicionar todos ao calendário</button>`:""}</div>
+  let h=`<div class="toolbar"><div><span class="eyebrow">Próximos plantões</span><div>${prox.length} ${prox.length===1?"plantão":"plantões"} · ${totH}h</div></div>${prox.length?`<button class="btn sm sec" data-act="icstodos">Incluir todos no Calendário</button>`:""}</div>
   ${prox.length?`<p class="note" style="margin:0">O calendário do celular (iPhone/iCloud, Google ou Outlook) avisa 1 dia antes e 2 horas antes de cada plantão. Se você desistir de um plantão, apague o evento do calendário.</p>`:""}`;
   h+=prox.length?agenda(prox,{mine:1,showMes:1}):`<div class="vazio"><b>Você ainda não tem plantões marcados</b><span>Quando o gestor liberar dias para você, escolha seus horários em “Escolher horários”.</span></div>`;
   if(pas.length)h+=`<button class="btn sm quiet" data-act="passados" style="justify-self:start">${verPassados?"Ocultar":"Ver"} plantões anteriores (${pas.length})</button>${verPassados?agenda([...pas].reverse(),{showMes:1}):""}`;
@@ -675,7 +675,7 @@ function baixarIcs(lista,nome){
   const url=URL.createObjectURL(new Blob([txt],{type:"text/calendar;charset=utf-8"}));
   const a=document.createElement("a");a.href=url;a.download=nome;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),10000);
-  toast(lista.length===1?"Abra o arquivo para adicionar ao calendário.":`${lista.length} plantões prontos: abra o arquivo para adicionar ao calendário.`);
+  toast(lista.length===1?"Abra o arquivo para incluir no Calendário.":`${lista.length} plantões prontos: abra o arquivo para incluir no Calendário.`);
 }
 let logoPngCache=null;
 function logoPng(){
