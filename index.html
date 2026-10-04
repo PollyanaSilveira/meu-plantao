@@ -744,9 +744,17 @@ function viewCheckinGestor(){
   let h=`<div class="toolbar"><div class="mesnav"><button class="iconbtn" data-act="presdia" data-d="-1" aria-label="Dia anterior">‹</button><b>${DOW[dowOf(presDia)]} ${ddmm(presDia)}</b><button class="iconbtn" data-act="presdia" data-d="1" aria-label="Próximo dia">›</button></div>
   ${presDia!==hojeStr?`<button class="btn sm quiet" data-act="presdia" data-d="0">Hoje</button>`:""}</div>`;
   if(!st||st.lat==null)h+=`<div class="card note-card warn"><p>Defina a localização do stand em <b>Ajustes → Local do stand</b>. Sem ela, os corretores não conseguem fazer check-in.</p></div>`;
-  h+=dia.length?`<section class="card"><div class="tablewrap"><table><thead><tr><th>Horário</th><th>Corretor</th><th>Check-in</th><th>Check-out</th><th>Situação</th></tr></thead><tbody>${dia.map(v=>{const p=presenca(v,agora);
-    return `<tr><td class="n">${esc(v.ini)}–${esc(v.fim)}</td><td>${esc(quem(v)||"—")} <span class="why">${esc(nomeParc(parcDe(v)))}</span></td><td class="n">${hm(p.ci)}${v.checkin&&v.checkin.dist!=null?` <span class="why">${v.checkin.dist} m</span>`:""}</td><td class="n">${hm(tsData(v.checkout))}</td><td>${pillPres(p)}</td></tr>`}).join("")}</tbody></table></div></section>`
-    :`<div class="vazio"><b>Nenhum plantão com corretor neste dia</b></div>`;
+  if(dia.length){
+    const ps=dia.map(v=>({v,p:presenca(v,agora),k:parcDe(v)||"__sem"}));
+    const cont=c=>ps.filter(x=>x.p.cod===c).length,falt=cont("falta")+cont("atrasado");
+    h+=`<div class="stats"><div class="stat"><b>${ps.length}</b><span>plantões no dia</span></div><div class="stat"><b>${cont("em")}</b><span>em plantão agora</span></div><div class="stat"><b>${cont("ok")}</b><span>concluídos</span></div><div class="stat"><b style="${falt?"color:var(--bad)":""}">${falt}</b><span>faltas ou não chegou</span></div></div>`;
+    const grupos=[...imobs.map(x=>x.k),"__sem"].filter(k=>ps.some(x=>x.k===k));
+    h+=`<section class="card"><h2>Plantões do dia por imobiliária</h2>`+grupos.map(k=>{const g=ps.filter(x=>x.k===k),nome=k==="__sem"?"Sem imobiliária":nomeParc(k);
+      const res=[["em","em plantão"],["ok","concluídos"],["atrasado","não chegou"],["falta","faltas"],["semco","sem check-out"],["aguarda","aguardando"]].map(([c,l])=>{const n=g.filter(x=>x.p.cod===c).length;return n?`${n} ${l}`:""}).filter(Boolean).join(" · ");
+      const alerta=g.some(x=>x.p.cod==="falta"||x.p.cod==="atrasado");
+      return `<div class="stack grupo-imob dobra-card" data-dobra="ci-${esc(k)}" style="gap:8px"><div class="row" style="${cores(k)}"><span class="sw"></span><b>${esc(nome)}</b><span class="note">${g.length} ${g.length===1?"plantão":"plantões"}${res?" · "+res:""}</span>${alerta?`<span class="pill" style="background:var(--badbg);color:var(--bad)">Atenção</span>`:""}</div>
+      <div class="tablewrap"><table><thead><tr><th>Horário</th><th>Corretor</th><th>Check-in</th><th>Check-out</th><th>Situação</th></tr></thead><tbody>${g.map(({v,p})=>`<tr><td class="n">${esc(v.ini)}–${esc(v.fim)}</td><td>${esc(quem(v)||"—")}</td><td class="n">${hm(p.ci)}${v.checkin&&v.checkin.dist!=null?` <span class="why">${v.checkin.dist} m</span>`:""}</td><td class="n">${hm(tsData(v.checkout))}</td><td>${pillPres(p)}</td></tr>`).join("")}</tbody></table></div></div>`}).join("")+`</section>`;
+  }else h+=`<div class="vazio"><b>Nenhum plantão com corretor neste dia</b></div>`;
   // resumo do mês
   const m=presDia.slice(0,7),g=new Map();
   doMes(m).filter(v=>v.corretorId&&quando(v.data,v.ini)<=agora).forEach(v=>{const p=presenca(v,agora),k=v.corretorId;
@@ -754,7 +762,9 @@ function viewCheckinGestor(){
     const x=g.get(k);x.n++;if(p.ci)x.pres++;if(p.cod==="falta")x.faltas++;if(p.atraso>tolerancia())x.atrasos++;if(p.min)x.min+=p.min});
   const rows=[...g.values()].sort((a,b)=>a.imob.localeCompare(b.imob)||a.nome.localeCompare(b.nome));
   h+=`<section class="card dobra-card" data-dobra="resumo"><h2>Resumo de ${nomeMes(m)} até agora</h2><p class="note">Atraso conta a partir de ${tolerancia()} minutos depois do início (ajuste em Ajustes).</p>
-  ${rows.length?`<div class="tablewrap"><table><thead><tr><th>Corretor</th><th>Imobiliária</th><th>Plantões</th><th>Presenças</th><th>Faltas</th><th>Atrasos</th><th>Horas</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.nome)}</td><td>${esc(r.imob)}</td><td class="n">${r.n}</td><td class="n">${r.pres}</td><td class="n" style="${r.faltas?"color:var(--bad);font-weight:700":""}">${r.faltas}</td><td class="n">${r.atrasos}</td><td class="n">${durTxt(r.min)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">Nenhum plantão com corretor cadastrado já começou neste mês.</p>`}</section>`;
+  ${rows.length?[...new Set(rows.map(r=>r.imob))].map(im=>{const rs=rows.filter(r=>r.imob===im),f=rs.reduce((a,r)=>a+r.faltas,0);
+    return `<div class="stack grupo-imob dobra-card" data-dobra="rs-${esc(slug(im)||"sem")}" style="gap:8px"><div class="row"><b>${esc(im||"Sem imobiliária")}</b><span class="note">${rs.length} ${rs.length===1?"corretor":"corretores"} · ${rs.reduce((a,r)=>a+r.n,0)} plantões · ${f} ${f===1?"falta":"faltas"} · ${durTxt(rs.reduce((a,r)=>a+r.min,0))}</span></div>
+    <div class="tablewrap"><table><thead><tr><th>Corretor</th><th>Plantões</th><th>Presenças</th><th>Faltas</th><th>Atrasos</th><th>Horas</th></tr></thead><tbody>${rs.map(r=>`<tr><td>${esc(r.nome)}</td><td class="n">${r.n}</td><td class="n">${r.pres}</td><td class="n" style="${r.faltas?"color:var(--bad);font-weight:700":""}">${r.faltas}</td><td class="n">${r.atrasos}</td><td class="n">${durTxt(r.min)}</td></tr>`).join("")}</tbody></table></div></div>`}).join(""):`<p class="note">Nenhum plantão com corretor cadastrado já começou neste mês.</p>`}</section>`;
   return h;
 }
 function cardLocalStand(){
