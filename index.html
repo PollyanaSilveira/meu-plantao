@@ -449,13 +449,14 @@ function viewLiberar(){
   if(!diasComVaga.length)h+=`<div class="card note-card warn"><p>Ainda não há horários em ${nomeMes(mes)}. Crie os horários na aba “Horários” antes de liberar os dias.</p></div>`;
   if(lista.length){
     const qtd=alvoLote().length,diasB=diasLote();
-    const comCor=imobs.filter(x=>lista.some(({p})=>p.parceiro===x.k));
+    const comCor=imobs;
     h+=`<section class="card"><h2>Liberar em grupo</h2><p class="note">1) Marque as imobiliárias. 2) Na lista de corretores, deixe marcados só os que vão estar disponíveis. 3) Escolha os dias da semana e o limite.</p>
     <div class="lbl">1. Imobiliárias</div>
-    <div class="row">${comCor.map(x=>{const n=lista.filter(({p})=>p.parceiro===x.k).length;return `<button class="chip" style="${cores(x.k)}" data-act="lbsel" data-k="${esc(x.k)}" aria-pressed="${lbSel.has(x.k)}"><span class="sw"></span>${esc(x.nome)} <span class="why">${n}</span></button>`}).join("")}
+    <div class="row">${comCor.map(x=>{const n=lista.filter(({p})=>p.parceiro===x.k).length;return `<button class="chip" style="${cores(x.k)}${n?"":";opacity:.55"}" data-act="lbsel" data-k="${esc(x.k)}" aria-pressed="${lbSel.has(x.k)}" title="${n?`${n} corretores ativos`:"Sem corretores ativos neste mês"}"><span class="sw"></span>${esc(x.nome)} <span class="why">${n}</span></button>`}).join("")}
     ${comCor.length>1?`<button class="link" data-act="lbselall">${comCor.every(x=>lbSel.has(x.k))?"Desmarcar todas":"Marcar todas"}</button>`:""}</div>
     <div class="lbl">2. Corretores disponíveis</div>
     ${lbSel.size?`<div class="stack" style="gap:10px">${comCor.filter(x=>lbSel.has(x.k)).map(x=>{const cs=lista.filter(({p})=>p.parceiro===x.k),marc=cs.filter(({uid})=>!lbFora.has(uid)).length;
+      if(!cs.length)return `<div class="stack" style="gap:6px;background:var(--soft);border-radius:10px;padding:10px 12px"><div class="row" style="${cores(x.k)}"><span class="sw"></span><b>${esc(x.nome)}</b><span class="note">Nenhum corretor ativo em ${mesMin(mes)}. Cadastre ou ative os corretores dela na aba “Corretores”.</span></div></div>`;
       return `<div class="stack" style="gap:6px;background:var(--soft);border-radius:10px;padding:10px 12px"><div class="row" style="${cores(x.k)}"><span class="sw"></span><b>${esc(x.nome)}</b><span class="note">${marc} de ${cs.length} disponíveis</span><button class="link" data-act="lbtodos" data-k="${esc(x.k)}">${marc===cs.length?"Desmarcar todos":"Marcar todos"}</button></div>
       <div class="row">${cs.map(({uid,p})=>`<label class="check" style="font-weight:600;min-width:12ch"><input type="checkbox" data-act="lbcor" data-uid="${uid}" ${lbFora.has(uid)?"":"checked"}> ${esc(p.nome)}</label>`).join("")}</div></div>`}).join("")}</div>`
       :`<p class="note" style="margin:0">Marque uma imobiliária acima para ver os corretores dela.</p>`}
@@ -776,7 +777,7 @@ async function act(a,ds){
     case "limpaexc":return run(()=>updateDoc(doc(fs,"vagas",ds.id),{excetoImob:[],excetoCor:[]}),"Exceções removidas.");
     case "lbdow":{const w=+ds.w;lbDow.has(w)?lbDow.delete(w):lbDow.add(w);break}
     case "lbsel":lbSel.has(ds.k)?lbSel.delete(ds.k):lbSel.add(ds.k);break;
-    case "lbselall":{const ks=imobs.map(x=>x.k).filter(k=>[...perfis.values()].some(p=>p.parceiro===k&&ativoNoMes(p,mes)));const todas=ks.every(k=>lbSel.has(k));ks.forEach(k=>todas?lbSel.delete(k):lbSel.add(k));break}
+    case "lbselall":{const ks=imobs.map(x=>x.k);const todas=ks.every(k=>lbSel.has(k));ks.forEach(k=>todas?lbSel.delete(k):lbSel.add(k));break}
     case "lbtodos":{const us=[...perfis.entries()].filter(([,p])=>p.parceiro===ds.k&&ativoNoMes(p,mes)).map(([u])=>u);const todos=us.every(u=>!lbFora.has(u));us.forEach(u=>todos?lbFora.add(u):lbFora.delete(u));break}
     case "lbcor":lbFora.has(ds.uid)?lbFora.delete(ds.uid):lbFora.add(ds.uid);break;
     case "lote":{const dias=diasLote(),lim=Math.max(1,parseInt(document.getElementById("lb-blim")?.value)||1),excl=document.getElementById("lb-excl")?.checked;
