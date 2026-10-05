@@ -112,6 +112,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .multi-btn::after{content:"";position:absolute;right:12px;top:50%;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg)}
 .multi-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:6;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(9,26,53,.25);padding:12px 14px;display:grid;gap:8px;min-width:240px}
 .multi-pop .check{font-weight:600}
+.simbolo-bv{width:92px;height:92px;color:var(--onnavy);margin-bottom:14px;animation:bvEntra .8s ease-out both}
+.boasvindas h1{font-size:2.4rem!important;animation:bvEntra .8s .15s ease-out both}
+.boasvindas .tagline,.boasvindas .local,.boasvindas .divisor{animation:bvEntra .8s .3s ease-out both}
+@keyframes bvEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.simbolo-bv,.boasvindas *{animation:none!important}}
 .sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
 .login-head p{color:var(--sky)}
 .login .link{color:var(--sky)}
@@ -238,13 +243,14 @@ const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agos
 const DEF_PARC=[{k:"torre",nome:"TORRE",cor:1},{k:"raliane",nome:"Raliane B.",cor:0},{k:"realiza",nome:"Realiza",cor:2},{k:"carmem",nome:"Carmem Coutinho",cor:3},{k:"ariel",nome:"Ariel",cor:4},{k:"evandro",nome:"Evandro",cor:5},{k:"watson",nome:"Watson N.",cor:6},{k:"mara",nome:"Mara Suzi & Selma",cor:7},{k:"ariana",nome:"Ariana Guimarães",cor:8},{k:"solo",nome:"SOLO",cor:9},{k:"dennis",nome:"Dennis",cor:12}];
 const DEF_CFG={aberta:true,desistir:true,aviso:"",feriados:["2026-10-12"]};
 const TURNOS=[["10:00","14:00"],["14:00","17:00"],["17:00","20:00"],["10:00","15:00"],["15:00","20:00"],["14:00","20:00"]];
+const SIMBOLO=`<svg class="simbolo-bv" viewBox="515 77 970 970" aria-hidden="true" fill="currentColor"><defs><mask id="ac-m2"><rect x="0" y="0" width="2000" height="1200" fill="#000"/><circle cx="1000" cy="562" r="481" fill="#fff"/><polyline points="380,872 833,419 1420,1006" fill="none" stroke="#000" stroke-width="92"/><path d="M1440,170 C1230,265 1100,420 1125,565 C1145,690 1265,800 1470,880" fill="none" stroke="#000" stroke-width="92"/></mask></defs><rect x="0" y="0" width="2000" height="1200" mask="url(#ac-m2)"/></svg>`;
 const LOGO=`<svg class="logo" viewBox="0 0 1837 164" role="img" aria-label="Almeida Carneiro" fill="currentColor"><path d="M69.8039 1.98067L139.608 157.266H118.467L102.911 123H36.2981L20.7417 157.266H0L69.8039 1.98067ZM94.7339 104.184L69.8039 48.1304H69.4051L44.4751 104.184H94.7339Z"/><path d="M153.77 7.92271H173.714V138.449H218.987V157.266H153.77V7.92271Z"/><path d="M256.501 0L312.345 120.425H312.743L368.587 0L398.902 157.266H378.958L360.809 60.6087H360.41L312.345 164L264.28 60.6087H263.881L245.732 157.266H226.187L256.501 0Z"/><path d="M419.539 7.92271H499.913V26.7391H439.483V68.5314H498.916V87.3478H439.483V138.449H499.913V157.266H419.539V7.92271Z"/><path d="M526.13 7.92271H546.074V157.266H526.13V7.92271Z"/><path d="M694.247 82.5942C694.247 103.193 686.07 122.406 672.508 135.676C658.946 148.947 640.398 157.266 615.069 157.266H578.771V7.92271H615.069C640.398 7.92271 658.946 16.2415 672.508 29.5121C686.07 42.7826 694.247 61.9952 694.247 82.5942ZM598.715 26.7391V138.449H613.274C633.218 138.449 647.379 132.309 657.351 122.406C667.522 112.304 673.505 98.4396 673.505 82.5942C673.505 66.7488 667.522 52.8841 657.351 42.7826C647.379 32.8792 633.218 26.7391 613.274 26.7391H598.715Z"/><path d="M761.938 1.98067L831.742 157.266H810.602L795.045 123H728.432L712.876 157.266H692.134L761.938 1.98067ZM786.868 104.184L761.938 48.1304H761.539L736.609 104.184H786.868Z"/><path d="M948.232 159.643C904.156 159.643 870.849 125.377 870.849 82.5942C870.849 39.8116 904.156 5.54589 948.232 5.54589C963.788 5.54589 977.949 9.90339 989.716 17.628V39.2174C978.946 30.1063 964.985 24.5604 949.229 24.5604C916.521 24.5604 891.591 49.715 891.591 82.5942C891.591 115.473 916.521 140.628 949.229 140.628C964.985 140.628 978.946 135.082 989.716 125.971V147.56C977.949 155.285 963.788 159.643 948.232 159.643Z"/><path d="M1063.4 1.98067L1133.21 157.266H1112.07L1096.51 123H1029.9L1014.34 157.266H993.6L1063.4 1.98067ZM1088.33 104.184L1063.4 48.1304H1063.01L1038.08 104.184H1088.33Z"/><path d="M1215.58 157.266L1174.49 95.0725H1167.31V157.266H1147.37V7.92271H1182.87C1199.22 7.92271 1210.19 12.6763 1217.97 20.401C1225.95 28.3237 1230.74 39.4155 1230.74 51.4976C1230.74 71.7005 1217.97 88.9324 1197.43 93.4879L1239.71 157.266H1215.58ZM1167.31 76.256H1181.07C1192.24 76.256 1198.43 73.4831 1202.81 69.1256C1207.4 64.57 1209.99 58.43 1209.99 51.4976C1209.99 44.5652 1207.4 38.4251 1202.81 33.8696C1198.43 29.5121 1192.24 26.7391 1181.07 26.7391H1167.31V76.256Z"/><path d="M1278.78 47.5362H1278.38V157.266H1258.44V0L1371.72 116.266H1372.12V7.92271H1392.07V164L1278.78 47.5362Z"/><path d="M1424.82 7.92271H1505.2V26.7391H1444.77V68.5314H1504.2V87.3478H1444.77V138.449H1505.2V157.266H1424.82V7.92271Z"/><path d="M1531.42 7.92271H1551.36V157.266H1531.42V7.92271Z"/><path d="M1652.27 157.266L1611.18 95.0725H1604V157.266H1584.06V7.92271H1619.56C1635.91 7.92271 1646.88 12.6763 1654.66 20.401C1662.64 28.3237 1667.42 39.4155 1667.42 51.4976C1667.42 71.7005 1654.66 88.9324 1634.12 93.4879L1676.4 157.266H1652.27ZM1604 76.256H1617.76C1628.93 76.256 1635.11 73.4831 1639.5 69.1256C1644.09 64.57 1646.68 58.43 1646.68 51.4976C1646.68 44.5652 1644.09 38.4251 1639.5 33.8696C1635.11 29.5121 1628.93 26.7391 1617.76 26.7391H1604V76.256Z"/><path d="M1759.62 159.643C1715.54 159.643 1682.23 125.377 1682.23 82.5942C1682.23 39.8116 1715.54 5.54589 1759.62 5.54589C1803.69 5.54589 1837 39.8116 1837 82.5942C1837 125.377 1803.69 159.643 1759.62 159.643ZM1759.62 140.628C1791.73 140.628 1816.26 115.473 1816.26 82.5942C1816.26 49.715 1791.73 24.5604 1759.62 24.5604C1727.51 24.5604 1702.98 49.715 1702.98 82.5942C1702.98 115.473 1727.51 140.628 1759.62 140.628Z"/></svg>`;
 
 const configurado=!String(firebaseConfig.apiKey||"").includes("COLE");
 let auth,fs,auth2;
 if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.languageCode="pt";fs=getFirestore(app);auth2=getAuth(initializeApp(firebaseConfig,"cadastro"))}
 
-let libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
+let libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
 let loginModo="escolha",loginErr="",gestorNovo=false,lote=null;
@@ -1012,6 +1018,8 @@ function render(){
   const a=document.activeElement,fid=a&&root.contains(a)&&a.id,ss=fid&&a.selectionStart,se=fid&&a.selectionEnd;
   let h;
   if(fase==="login"||fase==="semconfig")h=viewLogin();
+  else if(fase==="boasvindas"){const nm=isAdmin?"":isGestor?nomeParc(gImob):(perfil&&perfil.nome?perfil.nome.split(" ")[0]:"");
+    h=`<div class="login boasvindas" role="status" aria-live="polite"><div class="login-head">${SIMBOLO}<h1>Seja bem-vindo${nm?",":""}</h1>${nm?`<p class="tagline" style="letter-spacing:.2em">${esc(nm)}</p>`:""}<span class="divisor" aria-hidden="true" style="margin-top:14px"></span><p class="local">Carregando seus plantões…</p></div></div>`}
   else if(fase==="carregando")h=`<div class="login"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="local">Carregando…</p></div></div>`;
   else if(fase==="pendente")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card stack"><h2>Cadastro em análise</h2><p>Seu cadastro como gestor da <b>${esc(nomeParc(pedido&&pedido.imob))}</b> foi enviado. Assim que a coordenação aprovar, esta tela abre sozinha.</p><button class="btn quiet" data-act="sair">Sair</button></div></div></div>`;
   else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
@@ -1285,12 +1293,12 @@ async function submit(form){
     const key=chave(nome,k);ocupado=true;render();
     try{
       const s=await getDoc(doc(fs,"logins",loginId(key,ano)));
-      if(s.exists()){await signInWithEmailAndPassword(auth,s.data().email,s.data().senha);return}
+      if(s.exists()){boasVindas=true;await signInWithEmailAndPassword(auth,s.data().email,s.data().senha);return}
       // Cadastros feitos antes da mudança de formato (login = imobiliária--nome, senha derivada do ano).
       const velho=await getDoc(doc(fs,"logins",key));
-      if(velho.exists()){await signInWithEmailAndPassword(auth,velho.data().email,`mp${ano}#${key}`);return}
+      if(velho.exists()){boasVindas=true;await signInWithEmailAndPassword(auth,velho.data().email,`mp${ano}#${key}`);return}
       loginErr="Não encontramos um cadastro com esse nome, imobiliária e ano de nascimento. Confira os dados ou fale com a coordenação.";
-    }catch(e){loginErr=authMsg(e)}finally{ocupado=false;render()}
+    }catch(e){boasVindas=false;loginErr=authMsg(e)}finally{ocupado=false;render()}
   }
   else if(f==="solicitar"){
     const nome=g("sl-nome"),k=g("sl-imob"),email=g("sl-email").toLowerCase(),pw=document.getElementById("sl-senha").value;loginErr="";
@@ -1302,7 +1310,7 @@ async function submit(form){
     finally{cadastrando=false;ocupado=false;if(auth.currentUser)iniciar(auth.currentUser);else render()}}
   else if(f==="gestor"){
     const email=g("gs-email"),pw=document.getElementById("gs-senha").value;loginErr="";ocupado=true;render();
-    if(!gestorNovo){try{await signInWithEmailAndPassword(auth,email,pw)}catch(e){loginErr=authMsg(e)}finally{ocupado=false;render()}return}
+    if(!gestorNovo){try{boasVindas=true;await signInWithEmailAndPassword(auth,email,pw)}catch(e){boasVindas=false;loginErr=authMsg(e)}finally{ocupado=false;render()}return}
     cadastrando=true;let cred=null;
     try{
       cred=await createUserWithEmailAndPassword(auth,email,pw);
@@ -1406,7 +1414,8 @@ document.addEventListener("input",keep);document.addEventListener("change",keep)
 function parar(){subs.forEach(f=>f());subs=[];libsImob=new Map();vagas=new Map();privs=new Map();creds=new Map();perfis=new Map();libs=new Map()}
 const falha=e=>{console.error(e);if(e.code!=="permission-denied")toast("A conexão com a escala caiu. Recarregue a página.")};
 async function iniciar(u){
-  parar();me=u;isAdmin=false;isGestor=false;gImob="";perfil=null;fase="carregando";render();
+  const t0=Date.now(),bv=boasVindas;
+  parar();me=u;isAdmin=false;isGestor=false;gImob="";perfil=null;fase=bv?"boasvindas":"carregando";render();
   try{
     const a=await getDoc(doc(fs,"admins",u.uid));isAdmin=a.exists();
     if(!isAdmin){const gi=await getDoc(doc(fs,"gestoresImob",u.uid));if(gi.exists()){isGestor=true;gImob=gi.data().imob}}
@@ -1438,7 +1447,9 @@ async function iniciar(u){
     subs.push(onSnapshot(doc(fs,"perfis",u.uid),s=>{if(s.exists()){perfil=s.data();render()}else signOut(auth)},falha));
     subs.push(onSnapshot(query(collection(fs,"liberacoes"),where("uid","==",u.uid)),s=>{libs=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
   }
-  tab=isAdmin?"escala":isGestor?"distribuir":"minhas";fase="ok";render();
+  tab=isAdmin?"escala":isGestor?"distribuir":"minhas";
+  if(bv){fase="boasvindas";render();await new Promise(r=>setTimeout(r,Math.max(0,3000-(Date.now()-t0))));boasVindas=false}
+  fase="ok";render();
 }
 setInterval(()=>{if(fase==="ok"&&tab==="checkin"&&!ocupado&&!(document.activeElement&&document.activeElement.id))render()},60000);
 if(configurado){
