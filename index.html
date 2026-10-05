@@ -375,7 +375,7 @@ function viewLogin(){
       <button class="btn lg" type="submit" ${ocupado?"disabled":""}>Enviar cadastro para aprovação</button>
       <button class="link" type="button" data-act="pedir" data-v="0">Já tenho acesso</button></form>
       <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
-      return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p><p class="local">Stand de Vendas</p></div>${corpo}</div></div>`;
+      return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div>${corpo}</div></div>`;
     }
     corpo=`<form class="card stack" data-form="gestor"><h2>${gestorNovo?"Criar acesso da coordenação":loginModo==="imob"?"Acesso da imobiliária":"Acesso da coordenação"}</h2>
     ${gestorNovo?`<p class="note">Use só na primeira vez, para configurar o sistema. Depois disso, novas contas de gestor não são aceitas.</p>`:""}
@@ -388,7 +388,7 @@ function viewLogin(){
     ${loginModo==="gestor"?`<button class="link" type="button" data-act="gestornovo">${gestorNovo?"Já tenho acesso":"Primeira vez? Criar acesso da coordenação"}</button>`:""}</form>
     <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
   }
-  return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p><p class="local">Stand de Vendas</p></div>${corpo}</div></div>`;
+  return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div>${corpo}</div></div>`;
 }
 
 /* ---------- partes da escala ---------- */
