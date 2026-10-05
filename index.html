@@ -223,7 +223,7 @@ const configurado=!String(firebaseConfig.apiKey||"").includes("COLE");
 let auth,fs,auth2;
 if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.languageCode="pt";fs=getFirestore(app);auth2=getAuth(initializeApp(firebaseConfig,"cadastro"))}
 
-let solicitacoes=new Map(),pedido=null,pedindo=false,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
+let libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
 let loginModo="escolha",loginErr="",gestorNovo=false,lote=null;
@@ -507,8 +507,9 @@ function viewLiberar(){
     <div class="row"><span class="note">Dias da semana:</span>${[1,2,3,4,5,6,0].map(w=>`<button class="chip" data-act="lbdow" data-w="${w}" aria-pressed="${lbDow.has(w)}">${DOW[w]}</button>`).join("")}</div>
     <div class="row"><label for="lb-blim">Cada corretor pode escolher até</label><input type="number" id="lb-blim" min="1" max="31" style="width:6em" value="${esc(dval("lb-blim","4"))}"><span class="note">plantões em ${mesMin(mes)}</span></div>
     <label class="check"><input type="checkbox" id="lb-excl" ${lbExcl?"checked":""}> Travar esses horários só para os corretores marcados (os outros não conseguem escolher)</label>
-    <div class="row"><button class="btn" data-act="lote" ${!diasB.length||!qtd||ocupado?"disabled":""}>Liberar ${diasB.length} ${diasB.length===1?"dia":"dias"} para ${qtd} ${qtd===1?"corretor":"corretores"}</button>
-    <span class="why">${!lbSel.size?"Marque ao menos uma imobiliária.":!qtd?"Nenhum corretor marcado.":diasB.length?diasB.map(ddmm).join(", "):lbDow.size?`Não há horários nesses dias da semana em ${mesMin(mes)}. Crie os horários na aba “Horários”.`:"Escolha os dias da semana."}</span></div>
+    ${[...lbSel].filter(k=>distribui.has(k)).map(k=>{const dd=diasImob(k,mes);return `<p class="note" style="margin:0"><b>${esc(nomeParc(k))}</b>: o gestor dela distribui os horários e só pode distribuir nos dias liberados aqui. ${dd.length?`Já liberados em ${mesMin(mes)}: ${dd.map(ddmm).join(", ")}. <button class="link" data-act="libimobdel" data-k="${esc(k)}">Remover dias da ${esc(nomeParc(k))}</button>`:`Nenhum dia liberado ainda em ${mesMin(mes)}.`}</p>`}).join("")}
+    <div class="row"><button class="btn" data-act="lote" ${!diasB.length||(!qtd&&![...lbSel].some(k=>distribui.has(k)))||ocupado?"disabled":""}>Liberar ${diasB.length} ${diasB.length===1?"dia":"dias"}${qtd?` para ${qtd} ${qtd===1?"corretor":"corretores"}`:""}</button>
+    <span class="why">${!lbSel.size?"Marque ao menos uma imobiliária.":!qtd&&![...lbSel].some(k=>distribui.has(k))?"Nenhum corretor marcado.":diasB.length?diasB.map(ddmm).join(", "):lbDow.size?`Não há horários nesses dias da semana em ${mesMin(mes)}. Crie os horários na aba “Horários”.`:"Escolha os dias da semana."}</span></div>
     ${(()=>{const f=fechadosLote();if(!f.length||!lbSel.size)return "";const donos=[...new Set(f.map(v=>v.restrito?nomeParc(v.restrito):"outras imobiliárias"))].filter(Boolean);
       return `<p class="note" style="margin:0">${f.length} ${f.length===1?"horário desses dias estava reservado":"horários desses dias estavam reservados"} para ${esc(donos.join(", "))}. Ao liberar, ${esc([...lbSel].map(nomeParc).join(", "))} também ${lbSel.size===1?"poderá":"poderão"} escolher, e quem já tinha acesso continua tendo.</p>`})()}</section>`;
   }
@@ -827,11 +828,14 @@ function paraImob(v){
   const ex=v.excetoImob||[];
   return !ex.includes(gImob)&&imobs.filter(x=>x.k!==gImob).every(x=>ex.includes(x.k));
 }
+const diasImob=(k,m)=>(libsImob.get(`${k}_${m}`)?.dias)||[];
 function viewDistribuir(){
-  const lista=doMes(mes).filter(paraImob),cors=[...perfis.entries()].sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+  const liberados=diasImob(gImob,mes);
+  if(!liberados.length)return `<div class="toolbar">${mesNav()}</div><div class="vazio"><b>A coordenação ainda não liberou dias para a ${esc(nomeParc(gImob))} em ${mesMin(mes)}</b><span>Quando os dias forem liberados, os horários aparecem aqui para você escolher os corretores.</span></div>`;
+  const lista=doMes(mes).filter(v=>liberados.includes(v.data)&&paraImob(v)),cors=[...perfis.entries()].sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
   const preenc=lista.filter(v=>v.corretorId).length;
   let h=`<div class="toolbar">${mesNav()}<span class="note">${lista.length} horários · ${preenc} preenchidos · ${lista.length-preenc} livres</span></div>`;
-  if(!lista.length)return h+`<div class="vazio"><b>Nenhum horário reservado para a ${esc(nomeParc(gImob))} em ${mesMin(mes)}</b><span>Os dias da imobiliária são definidos pela coordenação. Quando forem reservados, aparecem aqui.</span></div>`;
+  if(!lista.length)return h+`<div class="vazio"><b>Nenhum horário disponível para a ${esc(nomeParc(gImob))} nos dias liberados</b><span>Fale com a coordenação.</span></div>`;
   h+=`<p class="note" style="margin:0">Escolha o corretor de cada horário. A alteração vale na hora e o corretor vê em “Meus plantões”.</p>`;
   const opc=(v)=>{const atual=v.corretorId,ativos=cors.filter(([u,p])=>ativoNoMes(p,v.mes)||u===atual);
     return `<option value="">— livre —</option>${ativos.map(([u,p])=>`<option value="${esc(u)}" ${u===atual?"selected":""}>${esc(p.nome)}</option>`).join("")}`};
@@ -1039,11 +1043,14 @@ async function act(a,ds){
     case "lbselall":{const ks=imobs.map(x=>x.k);const todas=ks.every(k=>lbSel.has(k));ks.forEach(k=>todas?lbSel.delete(k):lbSel.add(k));break}
     case "lbtodos":{const us=[...perfis.entries()].filter(([,p])=>p.parceiro===ds.k&&ativoNoMes(p,mes)).map(([u])=>u);const todos=us.every(u=>!lbFora.has(u));us.forEach(u=>todos?lbFora.add(u):lbFora.delete(u));break}
     case "lbcor":lbFora.has(ds.uid)?lbFora.delete(ds.uid):lbFora.add(ds.uid);break;
+    case "libimobdel":{const k=ds.k;return run(()=>deleteDoc(doc(fs,"liberacoesImob",`${k}_${mes}`)),`Dias da ${nomeParc(k)} em ${mesMin(mes)} removidos. O gestor dela não distribui mais nesses dias.`)}
     case "lote":{const dias=diasLote(),lim=Math.max(1,parseInt(document.getElementById("lb-blim")?.value)||1),excl=document.getElementById("lb-excl")?.checked;
       const alvo=alvoLote(),sel=[...lbSel],foraI=imobs.map(x=>x.k).filter(k=>!lbSel.has(k)),foraC=[...lbFora].filter(u=>lbSel.has(perfis.get(u)?.parceiro));
       return run(async()=>{const b=writeBatch(fs);
         alvo.forEach(([uid])=>{const L=libDe(uid,mes),ref=doc(fs,"liberacoes",`${uid}_${mes}`);
           if(L)b.update(ref,{dias:[...new Set([...(L.dias||[]),...dias])].sort(),limite:lim});else b.set(ref,{uid,mes,dias,limite:lim,escolhidas:[]})});
+        // Imobiliárias em que o gestor distribui: os dias ficam liberados para o gestor dela.
+        sel.filter(k=>distribui.has(k)).forEach(k=>{const id=`${k}_${mes}`;b.set(doc(fs,"liberacoesImob",id),{imob:k,mes,dias:[...new Set([...diasImob(k,mes),...dias])].sort()})});
         const alvoIds=new Set(alvo.map(([u])=>u));
         vagasLote().filter(v=>livre(v)).forEach(v=>{
           const aberto=!v.restrito&&!(v.excetoImob||[]).length&&!(v.excetoCor||[]).length;let up=null;
@@ -1344,7 +1351,7 @@ const keep=e=>{const t=e.target;if(t.id&&t.type!=="password")drafts[t.id]=t.type
 document.addEventListener("input",keep);document.addEventListener("change",keep);
 
 /* ---------- dados ---------- */
-function parar(){subs.forEach(f=>f());subs=[];vagas=new Map();privs=new Map();creds=new Map();perfis=new Map();libs=new Map()}
+function parar(){subs.forEach(f=>f());subs=[];libsImob=new Map();vagas=new Map();privs=new Map();creds=new Map();perfis=new Map();libs=new Map()}
 const falha=e=>{console.error(e);if(e.code!=="permission-denied")toast("A conexão com a escala caiu. Recarregue a página.")};
 async function iniciar(u){
   parar();me=u;isAdmin=false;isGestor=false;gImob="";perfil=null;fase="carregando";render();
@@ -1370,8 +1377,10 @@ async function iniciar(u){
     subs.push(onSnapshot(collection(fs,"perfis"),s=>{perfis=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
     subs.push(onSnapshot(collection(fs,"liberacoes"),s=>{libs=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
     subs.push(onSnapshot(collection(fs,"gestoresImob"),s=>{gestores=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
+    subs.push(onSnapshot(collection(fs,"liberacoesImob"),s=>{libsImob=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
     subs.push(onSnapshot(collection(fs,"solicitacoes"),s=>{solicitacoes=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
   }else if(isGestor){
+    subs.push(onSnapshot(query(collection(fs,"liberacoesImob"),where("imob","==",gImob)),s=>{libsImob=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
     subs.push(onSnapshot(query(collection(fs,"perfis"),where("parceiro","==",gImob)),s=>{perfis=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
   }else{
     subs.push(onSnapshot(doc(fs,"perfis",u.uid),s=>{if(s.exists()){perfil=s.data();render()}else signOut(auth)},falha));

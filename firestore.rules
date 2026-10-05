@@ -26,6 +26,12 @@ service cloud.firestore {
       allow delete: if isAdmin() && uid != request.auth.uid;
     }
 
+    // Dias liberados pela coordenação para cada imobiliária em cada mês (id = imobiliária_AAAA-MM).
+    match /liberacoesImob/{id} {
+      allow read: if isAdmin() || (gestorImob() && resource.data.imob == imobG());
+      allow write: if isAdmin();
+    }
+
     // Pedido de acesso de gestor de imobiliária: a própria pessoa cria, só a coordenação aprova (vira gestoresImob).
     match /solicitacoes/{uid} {
       allow read: if signed() && (request.auth.uid == uid || isAdmin());
@@ -138,6 +144,8 @@ service cloud.firestore {
           && (resource.data.get('restrito', '') == imobG()
               || (resource.data.get('restrito', '') == '' && !resource.data.get('excetoImob', []).hasAny([imobG()])))
           && (resource.data.get('aberta', false) == true || resource.data.corretorId != null)
+          && exists(/databases/$(database)/documents/liberacoesImob/$(imobG() + '_' + resource.data.mes))
+          && get(/databases/$(database)/documents/liberacoesImob/$(imobG() + '_' + resource.data.mes)).data.dias.hasAny([resource.data.data])
           && doGestor(resource.data.corretorId) && doGestor(request.resource.data.corretorId);
       }
       allow update: if isAdmin() || escolher() || desistir() || checkin() || checkout() || atribuir();
