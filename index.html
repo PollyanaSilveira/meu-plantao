@@ -226,7 +226,7 @@ if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.l
 let isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
-let loginModo="corretor",loginErr="",gestorNovo=false,lote=null;
+let loginModo="escolha",loginErr="",gestorNovo=false,lote=null;
 const hoje=new Date();const pad=n=>String(n).padStart(2,"0");
 const hojeStr=`${hoje.getFullYear()}-${pad(hoje.getMonth()+1)}-${pad(hoje.getDate())}`;
 let mes=hojeStr.slice(0,7),mesEscolhido=false,tab="minhas",confirmId=null,desistirId=null,editId=null,delId=null,libEdit=null,remId=null,soMinhas=false,verPassados=false,limparLivres=false,ocupado=false;
@@ -323,6 +323,13 @@ async function run(fn,ok){if(ocupado)return;ocupado=true;render();try{await fn()
 function viewLogin(){
   let corpo="";
   if(fase==="semconfig")corpo=`<div class="card note-card warn"><p><b>Falta configurar o Firebase.</b> Cole os dados do seu projeto no arquivo <code>firebase-config.js</code> (passo 2 do LEIA-ME).</p></div>`;
+  else if(loginModo==="escolha"){
+    corpo=`<div class="card stack"><h2>Como você vai entrar?</h2>
+    <button class="btn lg" data-act="modo" data-v="corretor">Sou corretor</button>
+    <button class="btn lg sec" data-act="modo" data-v="imob">Sou imobiliária</button>
+    <p class="why" style="margin:0">Corretor entra com nome, imobiliária e ano de nascimento. Imobiliária entra com e-mail e senha.</p></div>
+    <p style="text-align:center"><button class="link" data-act="modo" data-v="gestor">Acesso da coordenação</button></p>`;
+  }
   else if(loginModo==="corretor"){
     const opts=imobs.map(x=>`<option value="${esc(x.k)}" ${dval("lg-imob","")===x.k?"selected":""}>${esc(x.nome)}</option>`).join("");
     corpo=`<form class="card stack" data-form="login"><h2>Entrar</h2>
@@ -332,17 +339,17 @@ function viewLogin(){
     ${loginErr?`<p class="err">${esc(loginErr)}</p>`:""}
     <button class="btn lg" type="submit" ${ocupado?"disabled":""}>Entrar</button>
     <p class="why">Use o nome como a coordenação cadastrou. Se não conseguir entrar, fale com a coordenação.</p></form>
-    <p style="text-align:center"><button class="link" data-act="modo" data-v="gestor">Acesso do gestor</button></p>`;
+    <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
   }else{
-    corpo=`<form class="card stack" data-form="gestor"><h2>${gestorNovo?"Criar acesso de gestor":"Acesso do gestor"}</h2>
+    corpo=`<form class="card stack" data-form="gestor"><h2>${gestorNovo?"Criar acesso da coordenação":loginModo==="imob"?"Acesso da imobiliária":"Acesso da coordenação"}</h2>
     ${gestorNovo?`<p class="note">Use só na primeira vez, para configurar o sistema. Depois disso, novas contas de gestor não são aceitas.</p>`:""}
     <div class="field"><label for="gs-email">E-mail</label><input type="email" id="gs-email" autocomplete="username" value="${esc(dval("gs-email",""))}" required></div>
     <div class="field"><label for="gs-senha">Senha</label><input type="password" id="gs-senha" autocomplete="${gestorNovo?"new-password":"current-password"}" minlength="6" required></div>
     ${loginErr?`<p class="err">${esc(loginErr)}</p>`:""}
     <button class="btn lg" type="submit" ${ocupado?"disabled":""}>${gestorNovo?"Criar acesso e configurar":"Entrar"}</button>
     ${gestorNovo?"":`<button class="link" type="button" data-act="esqueci">Esqueci minha senha</button>`}
-    <button class="link" type="button" data-act="gestornovo">${gestorNovo?"Já tenho acesso de gestor":"Primeira vez? Criar acesso de gestor"}</button></form>
-    <p style="text-align:center"><button class="link" data-act="modo" data-v="corretor">Voltar para o acesso do corretor</button></p>`;
+    ${loginModo==="gestor"?`<button class="link" type="button" data-act="gestornovo">${gestorNovo?"Já tenho acesso":"Primeira vez? Criar acesso da coordenação"}</button>`:""}</form>
+    <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
   }
   return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<h1>Meu Plantão</h1><p>Stand de Vendas – Shopping Jequitibá</p></div>${corpo}</div></div>`;
 }
@@ -1335,7 +1342,7 @@ if(configurado){
   onSnapshot(doc(fs,"publico","distribui"),s=>{distribui=new Set(s.exists()?(s.data().imobs||[]):[]);render()},e=>console.error(e));
   onAuthStateChanged(auth,u=>{
     if(cadastrando)return;
-    if(!u){parar();me=null;isAdmin=false;isGestor=false;gImob="";perfil=null;fase="login";render();return}
+    if(!u){loginModo="escolha";parar();me=null;isAdmin=false;isGestor=false;gImob="";perfil=null;fase="login";render();return}
     iniciar(u);
   });
 }else render();
