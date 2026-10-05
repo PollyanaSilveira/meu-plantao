@@ -340,9 +340,9 @@ function viewLogin(){
   let corpo="";
   if(fase==="semconfig")corpo=`<div class="card note-card warn"><p><b>Falta configurar o Firebase.</b> Cole os dados do seu projeto no arquivo <code>firebase-config.js</code> (passo 2 do LEIA-ME).</p></div>`;
   else if(loginModo==="escolha"){
-    corpo=`<div class="card stack"><h2>Acesso, como:</h2>
-    <button class="btn lg" data-act="modo" data-v="corretor">Sou corretor</button>
-    <button class="btn lg sec" data-act="modo" data-v="imob">Sou imobiliária</button>
+    corpo=`<div class="card stack"><h2>Acesso, como</h2>
+    <button class="btn lg" data-act="modo" data-v="corretor">Corretor</button>
+    <button class="btn lg sec" data-act="modo" data-v="imob">Imobiliária</button>
     <hr class="sep-login">
     <p class="why" style="margin:0">Corretor: acesso com nome, imobiliária e ano de nascimento.<br>Imobiliária: acesso com e-mail e senha.</p></div>
     <p style="text-align:center"><button class="link" data-act="modo" data-v="gestor">Acesso da Coordenação</button></p>`;
