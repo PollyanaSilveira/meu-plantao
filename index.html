@@ -113,8 +113,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .multi-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:6;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(9,26,53,.25);padding:12px 14px;display:grid;gap:8px;min-width:240px}
 .multi-pop .check{font-weight:600}
 .simbolo-bv{width:92px;height:92px;color:var(--onnavy);margin-bottom:14px;animation:bvEntra .8s ease-out both}
-.boasvindas h1{font-size:2.4rem!important;animation:bvEntra .8s .15s ease-out both}
-.boasvindas .tagline,.boasvindas .local,.boasvindas .divisor{animation:bvEntra .8s .3s ease-out both}
+.boasvindas h1{font-size:2.6rem!important;text-shadow:0 2px 12px rgba(0,0,0,.35);animation:bvEntra .8s .15s ease-out both}
+.bv-nome{font-family:var(--display);font-size:1.6rem;font-weight:500;color:#fff;margin:4px 0 0;text-shadow:0 2px 12px rgba(0,0,0,.35)}
+.boasvindas .local{font-size:1.05rem;color:#e3ecf7}
+.boasvindas .marca{opacity:.03}
+.boasvindas .bv-nome,.boasvindas .local,.boasvindas .divisor{animation:bvEntra .8s .3s ease-out both}
 @keyframes bvEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.simbolo-bv,.boasvindas *{animation:none!important}}
 .sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
@@ -1019,7 +1022,7 @@ function render(){
   let h;
   if(fase==="login"||fase==="semconfig")h=viewLogin();
   else if(fase==="boasvindas"){const nm=isAdmin?"":isGestor?nomeParc(gImob):(perfil&&perfil.nome?perfil.nome.split(" ")[0]:"");
-    h=`<div class="login boasvindas" role="status" aria-live="polite"><div class="login-head">${SIMBOLO}<h1>Seja bem-vindo${nm?",":""}</h1>${nm?`<p class="tagline" style="letter-spacing:.2em">${esc(nm)}</p>`:""}<span class="divisor" aria-hidden="true" style="margin-top:14px"></span><p class="local">Carregando seus plantões…</p></div></div>`}
+    h=`<div class="login boasvindas" role="status" aria-live="polite"><div class="login-head">${SIMBOLO}<h1>Seja bem-vindo${nm?",":""}</h1>${nm?`<p class="bv-nome">${esc(nm)}</p>`:""}<span class="divisor" aria-hidden="true" style="margin-top:14px"></span><p class="local">Carregando seus plantões…</p></div></div>`}
   else if(fase==="carregando")h=`<div class="login"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="local">Carregando…</p></div></div>`;
   else if(fase==="pendente")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card stack"><h2>Cadastro em análise</h2><p>Seu cadastro como gestor da <b>${esc(nomeParc(pedido&&pedido.imob))}</b> foi enviado. Assim que a coordenação aprovar, esta tela abre sozinha.</p><button class="btn quiet" data-act="sair">Sair</button></div></div></div>`;
   else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
