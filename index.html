@@ -253,7 +253,7 @@ const configurado=!String(firebaseConfig.apiKey||"").includes("COLE");
 let auth,fs,auth2;
 if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.languageCode="pt";fs=getFirestore(app);auth2=getAuth(initializeApp(firebaseConfig,"cadastro"))}
 
-let libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
+let libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,splashAte=0,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
 let loginModo="escolha",loginErr="",gestorNovo=false,lote=null;
@@ -461,7 +461,7 @@ function viewMinhas(){
 function viewEscolher(){
   const L=libDe(me.uid,mes);
   let h=`<div class="toolbar">${mesNav()}</div>`;
-  if(distribui.has(perfil.parceiro))return h+`<div class="vazio"><b>Seus horários são definidos pelo gestor da ${esc(nomeParc(perfil.parceiro))}</b><span>Seus plantões aparecem em “Meus plantões”.</span></div>`;
+  if(distribui.has(perfil.parceiro))return h+`<div class="vazio"><b>Seus horários são definidos pelo gestor da ${esc(nomeParc(perfil.parceiro))}</b><span>Seus plantões aparecem em “Visão Geral”.</span></div>`;
   if(!ativoNoMes(perfil,mes)||!L||!(L.dias||[]).length)return h+`<div class="vazio"><b>Você não está liberado(a) para plantão em ${mesMin(mes)}</b><span>Quando o gestor liberar dias para você, eles aparecem aqui.</span></div>`;
   if(!cfg.aberta)return h+`<div class="vazio"><b>A escala está fechada no momento</b><span>O gestor abre a escala quando houver horários disponíveis.</span></div>`;
   const usados=(L.escolhidas||[]).length,resta=Math.max(0,L.limite-usados);
@@ -890,7 +890,7 @@ function viewDistribuir(){
   const preenc=lista.filter(v=>v.corretorId).length;
   let h=`<div class="toolbar">${mesNav()}<span class="note">${lista.length} horários · ${preenc} preenchidos · ${lista.length-preenc} livres</span></div>`;
   if(!lista.length)return h+`<div class="vazio"><b>Nenhum horário disponível para a ${esc(nomeParc(gImob))} nos dias liberados</b><span>Fale com a coordenação.</span></div>`;
-  h+=`<p class="note" style="margin:0">Escolha o corretor de cada horário. A alteração vale na hora e o corretor vê em “Meus plantões”.</p>`;
+  h+=`<p class="note" style="margin:0">Escolha o corretor de cada horário. A alteração vale na hora e o corretor vê em “Visão Geral”.</p>`;
   const opc=(v)=>{const atual=v.corretorId,ativos=cors.filter(([u,p])=>ativoNoMes(p,v.mes)||u===atual);
     return `<option value="">— livre —</option>${ativos.map(([u,p])=>`<option value="${esc(u)}" ${u===atual?"selected":""}>${esc(p.nome)}</option>`).join("")}`};
   const dias=[...new Set(lista.map(v=>v.data))].sort();
@@ -965,6 +965,8 @@ function baixarIcs(lista,nome){
   toast(lista.length===1?"Abra o arquivo para incluir no Calendário.":`${lista.length} plantões prontos: abra o arquivo para incluir no Calendário.`);
 }
 const salvarHp=()=>{try{localStorage.setItem("mp-hpQuem",JSON.stringify(hpQuem))}catch(x){}};
+// Boas-vindas: aparece ao tocar em Entrar e fica pelo menos 5 segundos na tela.
+function iniciarSplash(){splashAte=Date.now()+5000;render();setTimeout(render,5050)}
 let logoPngCache=null;
 function logoPng(){
   if(logoPngCache)return Promise.resolve(logoPngCache);
@@ -1020,16 +1022,16 @@ function render(){
   const root=document.getElementById("root");
   const a=document.activeElement,fid=a&&root.contains(a)&&a.id,ss=fid&&a.selectionStart,se=fid&&a.selectionEnd;
   let h;
-  if(fase==="login"||fase==="semconfig")h=viewLogin();
-  else if(fase==="boasvindas"){const nm=isAdmin?"":isGestor?nomeParc(gImob):(perfil&&perfil.nome?perfil.nome.split(" ")[0]:"");
+  if(splashAte&&Date.now()<splashAte&&fase!=="semperfil"&&!loginErr){const nm=isAdmin?"":isGestor?nomeParc(gImob):(perfil&&perfil.nome?perfil.nome.split(" ")[0]:"");
     h=`<div class="login boasvindas" role="status" aria-live="polite"><div class="login-head">${SIMBOLO}<h1>Seja bem-vindo${nm?",":""}</h1>${nm?`<p class="bv-nome">${esc(nm)}</p>`:""}<span class="divisor" aria-hidden="true" style="margin-top:14px"></span><p class="local">Carregando seus plantões…</p></div></div>`}
+  else if(fase==="login"||fase==="semconfig")h=viewLogin();
   else if(fase==="carregando")h=`<div class="login"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="local">Carregando…</p></div></div>`;
   else if(fase==="pendente")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card stack"><h2>Cadastro em análise</h2><p>Seu cadastro como gestor da <b>${esc(nomeParc(pedido&&pedido.imob))}</b> foi enviado. Assim que a coordenação aprovar, esta tela abre sozinha.</p><button class="btn quiet" data-act="sair">Sair</button></div></div></div>`;
   else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
   else{
     const T=isAdmin?[["escala","Escala"],["checkin","Check-in"],["horarios","Horários"],["corretores","Corretores",solicitacoes.size?`${perfis.size} · ${solicitacoes.size} pedido${solicitacoes.size>1?"s":""}`:perfis.size],["liberar","Liberar horários"],["relatorios","Relatórios"],["ajustes","Ajustes"]]
       :isGestor?[["distribuir","Distribuir horários"],["checkin","Check-in"]]
-      :[["minhas","Meus plantões",minhas().filter(v=>v.data>=hojeStr).length],["checkin","Check-in"],...(distribui.has(perfil.parceiro)?[]:[["escolher","Escolher horários"]]),["escala","Meu calendário"]];
+      :[["minhas","Visão Geral",minhas().filter(v=>v.data>=hojeStr).length],["checkin","Check-in"],...(distribui.has(perfil.parceiro)?[]:[["escolher","Escolher horários"]]),["escala","Meu calendário"]];
     const nome=isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome.split(" ")[0]);
     const sub=(isAdmin||isGestor)?esc(me.email||""):esc(nomeParc(perfil.parceiro));
     const ini=(isAdmin||isGestor)?"G":esc(perfil.nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase());
@@ -1296,12 +1298,12 @@ async function submit(form){
     const key=chave(nome,k);ocupado=true;render();
     try{
       const s=await getDoc(doc(fs,"logins",loginId(key,ano)));
-      if(s.exists()){boasVindas=true;await signInWithEmailAndPassword(auth,s.data().email,s.data().senha);return}
+      if(s.exists()){iniciarSplash();await signInWithEmailAndPassword(auth,s.data().email,s.data().senha);return}
       // Cadastros feitos antes da mudança de formato (login = imobiliária--nome, senha derivada do ano).
       const velho=await getDoc(doc(fs,"logins",key));
-      if(velho.exists()){boasVindas=true;await signInWithEmailAndPassword(auth,velho.data().email,`mp${ano}#${key}`);return}
+      if(velho.exists()){iniciarSplash();await signInWithEmailAndPassword(auth,velho.data().email,`mp${ano}#${key}`);return}
       loginErr="Não encontramos um cadastro com esse nome, imobiliária e ano de nascimento. Confira os dados ou fale com a coordenação.";
-    }catch(e){boasVindas=false;loginErr=authMsg(e)}finally{ocupado=false;render()}
+    }catch(e){splashAte=0;loginErr=authMsg(e)}finally{ocupado=false;render()}
   }
   else if(f==="solicitar"){
     const nome=g("sl-nome"),k=g("sl-imob"),email=g("sl-email").toLowerCase(),pw=document.getElementById("sl-senha").value;loginErr="";
@@ -1313,7 +1315,7 @@ async function submit(form){
     finally{cadastrando=false;ocupado=false;if(auth.currentUser)iniciar(auth.currentUser);else render()}}
   else if(f==="gestor"){
     const email=g("gs-email"),pw=document.getElementById("gs-senha").value;loginErr="";ocupado=true;render();
-    if(!gestorNovo){try{boasVindas=true;await signInWithEmailAndPassword(auth,email,pw)}catch(e){boasVindas=false;loginErr=authMsg(e)}finally{ocupado=false;render()}return}
+    if(!gestorNovo){try{iniciarSplash();await signInWithEmailAndPassword(auth,email,pw)}catch(e){splashAte=0;loginErr=authMsg(e)}finally{ocupado=false;render()}return}
     cadastrando=true;let cred=null;
     try{
       cred=await createUserWithEmailAndPassword(auth,email,pw);
@@ -1417,8 +1419,7 @@ document.addEventListener("input",keep);document.addEventListener("change",keep)
 function parar(){subs.forEach(f=>f());subs=[];libsImob=new Map();vagas=new Map();privs=new Map();creds=new Map();perfis=new Map();libs=new Map()}
 const falha=e=>{console.error(e);if(e.code!=="permission-denied")toast("A conexão com a escala caiu. Recarregue a página.")};
 async function iniciar(u){
-  const t0=Date.now(),bv=boasVindas;
-  parar();me=u;isAdmin=false;isGestor=false;gImob="";perfil=null;fase=bv?"boasvindas":"carregando";render();
+  parar();me=u;isAdmin=false;isGestor=false;gImob="";perfil=null;fase="carregando";render();
   try{
     const a=await getDoc(doc(fs,"admins",u.uid));isAdmin=a.exists();
     if(!isAdmin){const gi=await getDoc(doc(fs,"gestoresImob",u.uid));if(gi.exists()){isGestor=true;gImob=gi.data().imob}}
@@ -1451,7 +1452,6 @@ async function iniciar(u){
     subs.push(onSnapshot(query(collection(fs,"liberacoes"),where("uid","==",u.uid)),s=>{libs=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
   }
   tab=isAdmin?"escala":isGestor?"distribuir":"minhas";
-  if(bv){fase="boasvindas";render();await new Promise(r=>setTimeout(r,Math.max(0,5000-(Date.now()-t0))));boasVindas=false}
   fase="ok";render();
 }
 setInterval(()=>{if(fase==="ok"&&tab==="checkin"&&!ocupado&&!(document.activeElement&&document.activeElement.id))render()},60000);
