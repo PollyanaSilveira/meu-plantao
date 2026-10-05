@@ -1451,7 +1451,7 @@ async function iniciar(u){
     subs.push(onSnapshot(query(collection(fs,"liberacoes"),where("uid","==",u.uid)),s=>{libs=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
   }
   tab=isAdmin?"escala":isGestor?"distribuir":"minhas";
-  if(bv){fase="boasvindas";render();await new Promise(r=>setTimeout(r,Math.max(0,4000-(Date.now()-t0))));boasVindas=false}
+  if(bv){fase="boasvindas";render();await new Promise(r=>setTimeout(r,Math.max(0,5000-(Date.now()-t0))));boasVindas=false}
   fase="ok";render();
 }
 setInterval(()=>{if(fase==="ok"&&tab==="checkin"&&!ocupado&&!(document.activeElement&&document.activeElement.id))render()},60000);
