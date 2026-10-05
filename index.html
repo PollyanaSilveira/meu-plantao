@@ -92,13 +92,29 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .login{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px}
 .login-head .logo{color:var(--onnavy)}
 .login-head h1{color:var(--onnavy)}
+.login-head .divisor{display:block;width:44px;height:2px;background:var(--sky);border-radius:2px;margin:4px 0 10px}
+.login-head .tagline{text-transform:uppercase;letter-spacing:.38em;font-size:.8rem;color:var(--sky);margin:2px 0 0;padding-left:.38em}
+.login-head .local{color:#c9d6e6;font-size:.95rem;margin-top:6px}
+.login .card{background:rgba(16,37,74,.72);border:1px solid rgba(122,168,212,.35);color:#fff;box-shadow:0 18px 40px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:24px 26px}
+.login .card h2{font-family:var(--display);font-weight:400;font-size:1.4rem;color:#fff}
+.login .card p,.login .card label,.login .card .lbl{color:#c9d6e6}
+.login .card .note,.login .card .why{color:#a9bdd6}
+.login .card .err{color:#f4a7a2}
+.login .card input[type=text],.login .card input[type=email],.login .card input[type=password],.login .card select{background:rgba(9,26,53,.7);border-color:rgba(122,168,212,.35);color:#fff}
+.login .card input::placeholder{color:#8fa3bd}
+.login .card select option{color:#1D1D1F}
+.login .btn{background:var(--sky);border-color:var(--sky);color:var(--navy)}
+.login .btn.sec,.login .btn.quiet{background:transparent;color:var(--sky);border-color:var(--sky)}
+.login .card .link{color:var(--sky)}
+.login .card .stat{background:rgba(9,26,53,.6)}
+.sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
 .login-head p{color:var(--sky)}
 .login .link{color:var(--sky)}
 .login .card{box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .login-box{width:100%;max-width:400px;display:grid;gap:18px}
 .login-head{display:grid;justify-items:center;gap:8px;text-align:center}
 .login-head .logo{width:min(190px,60%);margin-bottom:6px}
-.login-head h1{font-family:var(--titulo);font-size:2.5rem;font-weight:400;font-style:italic;letter-spacing:.01em;margin:4px 0 0}
+.login-head h1{font-family:var(--titulo);font-size:3rem;line-height:1.05;font-weight:400;font-style:italic;letter-spacing:.01em;margin:4px 0 0}
 .login-head p{margin:0}
 .mesnav{display:flex;align-items:center;gap:10px}
 .mesnav b{font-family:var(--display);font-size:1.25rem;min-width:9ch;text-align:center}
@@ -324,11 +340,12 @@ function viewLogin(){
   let corpo="";
   if(fase==="semconfig")corpo=`<div class="card note-card warn"><p><b>Falta configurar o Firebase.</b> Cole os dados do seu projeto no arquivo <code>firebase-config.js</code> (passo 2 do LEIA-ME).</p></div>`;
   else if(loginModo==="escolha"){
-    corpo=`<div class="card stack"><h2>Como você vai entrar?</h2>
+    corpo=`<div class="card stack"><h2>Acesse</h2>
     <button class="btn lg" data-act="modo" data-v="corretor">Sou corretor</button>
     <button class="btn lg sec" data-act="modo" data-v="imob">Sou imobiliária</button>
-    <p class="why" style="margin:0">Corretor entra com nome, imobiliária e ano de nascimento. Imobiliária entra com e-mail e senha.</p></div>
-    <p style="text-align:center"><button class="link" data-act="modo" data-v="gestor">Acesso da coordenação</button></p>`;
+    <hr class="sep-login">
+    <p class="why" style="margin:0">Corretor: acesso com nome, imobiliária e ano de nascimento.<br>Imobiliária: acesso com e-mail e senha.</p></div>
+    <p style="text-align:center"><button class="link" data-act="modo" data-v="gestor">Acesso da Coordenação</button></p>`;
   }
   else if(loginModo==="corretor"){
     const opts=imobs.map(x=>`<option value="${esc(x.k)}" ${dval("lg-imob","")===x.k?"selected":""}>${esc(x.nome)}</option>`).join("");
@@ -353,7 +370,7 @@ function viewLogin(){
       <button class="btn lg" type="submit" ${ocupado?"disabled":""}>Enviar cadastro para aprovação</button>
       <button class="link" type="button" data-act="pedir" data-v="0">Já tenho acesso</button></form>
       <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
-      return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<h1>Meu Plantão</h1><p>Stand de Vendas – Shopping Jequitibá</p></div>${corpo}</div></div>`;
+      return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p><p class="local">Stand de Vendas</p></div>${corpo}</div></div>`;
     }
     corpo=`<form class="card stack" data-form="gestor"><h2>${gestorNovo?"Criar acesso da coordenação":loginModo==="imob"?"Acesso da imobiliária":"Acesso da coordenação"}</h2>
     ${gestorNovo?`<p class="note">Use só na primeira vez, para configurar o sistema. Depois disso, novas contas de gestor não são aceitas.</p>`:""}
@@ -366,7 +383,7 @@ function viewLogin(){
     ${loginModo==="gestor"?`<button class="link" type="button" data-act="gestornovo">${gestorNovo?"Já tenho acesso":"Primeira vez? Criar acesso da coordenação"}</button>`:""}</form>
     <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
   }
-  return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<h1>Meu Plantão</h1><p>Stand de Vendas – Shopping Jequitibá</p></div>${corpo}</div></div>`;
+  return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p><p class="local">Stand de Vendas</p></div>${corpo}</div></div>`;
 }
 
 /* ---------- partes da escala ---------- */
@@ -966,9 +983,9 @@ function render(){
   const a=document.activeElement,fid=a&&root.contains(a)&&a.id,ss=fid&&a.selectionStart,se=fid&&a.selectionEnd;
   let h;
   if(fase==="login"||fase==="semconfig")h=viewLogin();
-  else if(fase==="carregando")h=`<div class="login"><div class="login-head">${LOGO}<h1>Meu Plantão</h1><p>Carregando…</p></div></div>`;
-  else if(fase==="pendente")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<h1>Meu Plantão</h1></div><div class="card stack"><h2>Cadastro em análise</h2><p>Seu cadastro como gestor da <b>${esc(nomeParc(pedido&&pedido.imob))}</b> foi enviado. Assim que a coordenação aprovar, esta tela abre sozinha.</p><button class="btn quiet" data-act="sair">Sair</button></div></div></div>`;
-  else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<h1>Meu Plantão</h1></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
+  else if(fase==="carregando")h=`<div class="login"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="local">Carregando…</p></div></div>`;
+  else if(fase==="pendente")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card stack"><h2>Cadastro em análise</h2><p>Seu cadastro como gestor da <b>${esc(nomeParc(pedido&&pedido.imob))}</b> foi enviado. Assim que a coordenação aprovar, esta tela abre sozinha.</p><button class="btn quiet" data-act="sair">Sair</button></div></div></div>`;
+  else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
   else{
     const T=isAdmin?[["escala","Escala"],["checkin","Check-in"],["horarios","Horários"],["corretores","Corretores",solicitacoes.size?`${perfis.size} · ${solicitacoes.size} pedido${solicitacoes.size>1?"s":""}`:perfis.size],["liberar","Liberar horários"],["relatorios","Relatórios"],["ajustes","Ajustes"]]
       :isGestor?[["distribuir","Distribuir horários"],["checkin","Check-in"]]
