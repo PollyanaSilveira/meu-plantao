@@ -120,6 +120,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .boasvindas .bv-nome,.boasvindas .local,.boasvindas .divisor{animation:bvEntra .8s .3s ease-out both}
 @keyframes bvEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.simbolo-bv,.boasvindas *{animation:none!important}}
+.proxmes{border:2px dashed var(--line);margin-top:8px}
+.proxmes.on{border:2px solid var(--ok);background:var(--okbg)}
+.proxmes.on h2,.proxmes.on p{color:var(--fg)}
 .sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
 .login-head p{color:var(--sky)}
 .login .link{color:var(--sky)}
@@ -455,8 +458,9 @@ function viewMinhas(){
   let h=`<div class="toolbar"><div><span class="eyebrow">Próximos plantões</span><div>${prox.length} ${prox.length===1?"plantão":"plantões"} · ${totH}h</div></div>${prox.length?`<button class="btn sm sec" data-act="icstodos">Incluir todos no Calendário</button>`:""}</div>
   ${prox.length?`<p class="note" style="margin:0">O calendário do celular (iPhone/iCloud, Google ou Outlook) avisa 1 dia antes e 2 horas antes de cada plantão. Se você desistir de um plantão, apague o evento do calendário.</p>`:""}`;
   h+=prox.length?agenda(prox,{mine:1,showMes:1}):`<div class="vazio"><b>Você ainda não tem plantões marcados</b><span>Quando o gestor liberar dias para você, escolha seus horários em “Escolher horários”.</span></div>`;
+  const _fim=cardProximoMes();
   if(pas.length)h+=`<button class="btn sm quiet" data-act="passados" style="justify-self:start">${verPassados?"Ocultar":"Ver"} plantões anteriores (${pas.length})</button>${verPassados?agenda([...pas].reverse(),{showMes:1}):""}`;
-  return h;
+  return h+_fim;
 }
 function viewEscolher(){
   const L=libDe(me.uid,mes);
@@ -885,7 +889,7 @@ function paraImob(v){
 const diasImob=(k,m)=>(libsImob.get(`${k}_${m}`)?.dias)||[];
 function viewDistribuir(){
   const liberados=diasImob(gImob,mes);
-  if(!liberados.length)return `<div class="toolbar">${mesNav()}</div><div class="vazio"><b>A coordenação ainda não liberou dias para a ${esc(nomeParc(gImob))} em ${mesMin(mes)}</b><span>Quando os dias forem liberados, os horários aparecem aqui para você escolher os corretores.</span></div>`;
+  if(!liberados.length)return `<div class="toolbar">${mesNav()}</div><div class="vazio"><b>A coordenação ainda não liberou dias para a ${esc(nomeParc(gImob))} em ${mesMin(mes)}</b><span>Quando os dias forem liberados, os horários aparecem aqui para você escolher os corretores.</span></div>`+(mes===hojeStr.slice(0,7)?cardProximoMes():"");
   const lista=doMes(mes).filter(v=>liberados.includes(v.data)&&paraImob(v)),cors=[...perfis.entries()].sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
   const preenc=lista.filter(v=>v.corretorId).length;
   let h=`<div class="toolbar">${mesNav()}<span class="note">${lista.length} horários · ${preenc} preenchidos · ${lista.length-preenc} livres</span></div>`;
@@ -900,7 +904,7 @@ function viewDistribuir(){
     <span class="acts"><select id="dist-${v.id}" aria-label="Corretor de ${ddmm(d)} ${esc(v.ini)}" style="width:auto;min-width:16ch" ${d<hojeStr||ocupado?"disabled":""}>${opc(v)}</select></span>${p?`<span style="flex-basis:100%">${pillPres(p)}</span>`:""}</div>`}).join("")}</div></article>`).join("");
   const cont=cors.map(([u,p])=>({p,n:lista.filter(v=>v.corretorId===u).length})).filter(x=>x.n||ativoNoMes(x.p,mes));
   h+=`<section class="card dobra-card" data-dobra="dist-cont"><h2>Plantões por corretor em ${mesMin(mes)}</h2><div class="tablewrap"><table><thead><tr><th>Corretor</th><th>Plantões</th></tr></thead><tbody>${cont.map(x=>`<tr><td>${esc(x.p.nome)}</td><td class="n">${x.n}</td></tr>`).join("")}</tbody></table></div></section>`;
-  return h;
+  return h+(mes===hojeStr.slice(0,7)?cardProximoMes():"");
 }
 async function atribuirVaga(id,uid){
   return run(()=>updateDoc(doc(fs,"vagas",id),{corretorId:uid||null,escolhidoEm:uid?new Date().toISOString():null}),uid?`${perfis.get(uid)?.nome||"Corretor"} definido no horário.`:"Horário deixado livre.");
@@ -967,6 +971,35 @@ function baixarIcs(lista,nome){
 const salvarHp=()=>{try{localStorage.setItem("mp-hpQuem",JSON.stringify(hpQuem))}catch(x){}};
 // Boas-vindas: aparece ao tocar em Entrar e fica pelo menos 5 segundos na tela.
 function iniciarSplash(){splashAte=Date.now()+5000;render();setTimeout(render,5050)}
+/* ---------- disponibilidade do próximo mês ---------- */
+// As datas do mês seguinte são liberadas pela coordenação no dia 24 do mês atual.
+const DIA_LIBERACAO=24;
+const proximoMes=()=>{const dt=new Date(+hojeStr.slice(0,4),+hojeStr.slice(5,7),1);return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`};
+function cardProximoMes(){
+  const pm=proximoMes(),nome=MESES[+pm.slice(5,7)-1],abre=`${pad(DIA_LIBERACAO)}/${hojeStr.slice(5,7)}`;
+  let ok=false,texto="",botao="",alvo="";
+  if(isGestor){
+    ok=diasImob(gImob,pm).length>0;alvo="distribuir";
+    texto=ok?`Os dias de ${nome.toLowerCase()} já foram liberados. Defina os corretores de cada horário.`:`As datas de ${nome.toLowerCase()} são liberadas pela coordenação no dia ${abre}.`;
+    botao="Distribuir horários de "+nome.toLowerCase();
+  }else if(perfil&&distribui.has(perfil.parceiro)){
+    const n=minhas().filter(v=>v.mes===pm).length;ok=n>0;alvo="escala";
+    texto=ok?`O gestor da ${esc(nomeParc(perfil.parceiro))} já definiu ${n} ${n===1?"plantão seu":"plantões seus"} em ${nome.toLowerCase()}.`:`Seus plantões de ${nome.toLowerCase()} são definidos pelo gestor da ${esc(nomeParc(perfil.parceiro))} depois do dia ${abre}.`;
+    botao="Ver meus plantões de "+nome.toLowerCase();
+  }else if(perfil){
+    const L=libDe(me.uid,pm);ok=ativoNoMes(perfil,pm)&&!!(L&&(L.dias||[]).length)&&cfg.aberta;alvo="escolher";
+    const resta=L?Math.max(0,L.limite-(L.escolhidas||[]).length):0;
+    texto=ok?(resta?`Os horários de ${nome.toLowerCase()} já estão disponíveis para você. Escolha logo: quem confirma primeiro fica com o horário.`:`Você já escolheu todos os seus plantões de ${nome.toLowerCase()}.`)
+      :`As datas de ${nome.toLowerCase()} são liberadas no dia ${abre}. Fique atento(a) e volte aqui para escolher seus horários.`;
+    botao=resta||!ok?"Escolher meus horários de "+nome.toLowerCase():"Ver meus plantões de "+nome.toLowerCase();
+    if(ok&&!resta)alvo="escala";
+  }else return "";
+  return `<section class="card proxmes ${ok?"on":""}" aria-live="polite">
+  <div class="toolbar"><div><span class="eyebrow">Disponibilidade do próximo mês</span><h2 style="margin-top:2px">${nome} ${pm.slice(0,4)}</h2></div>
+  <span class="pill ${ok?"ok":""}" style="${ok?"":"background:var(--badbg);color:var(--bad)"}">${ok?"Disponível":"Não disponível"}</span></div>
+  <p>${texto}</p>
+  ${ok?`<button class="btn lg" data-act="irprox" data-alvo="${alvo}">${botao}</button>`:""}</section>`;
+}
 let logoPngCache=null;
 function logoPng(){
   if(logoPngCache)return Promise.resolve(logoPngCache);
@@ -1128,6 +1161,7 @@ async function act(a,ds){
     case "askrem":remId=ds.uid;break;
     case "norem":remId=null;break;
     case "pdf":return baixarPdf();
+    case "irprox":mes=proximoMes();mesEscolhido=true;tab=ds.alvo;confirmId=null;render();window.scrollTo({top:0,behavior:"smooth"});return;
     case "hpabrir":hpAberto=ds.g&&hpAberto!==ds.g?ds.g:null;break;
     case "hptodas":hpQuem[ds.g]=[];salvarHp();break;
     case "hpq":{const atual=(hpQuem[ds.g]||[]).filter(k=>parc(k)),set=new Set(atual.length?atual:imobs.map(x=>x.k));set.has(ds.k)?set.delete(ds.k):set.add(ds.k);
