@@ -26,6 +26,16 @@ service cloud.firestore {
       allow delete: if isAdmin() && uid != request.auth.uid;
     }
 
+    // Pedido de acesso de gestor de imobiliária: a própria pessoa cria, só a coordenação aprova (vira gestoresImob).
+    match /solicitacoes/{uid} {
+      allow read: if signed() && (request.auth.uid == uid || isAdmin());
+      allow create: if signed() && request.auth.uid == uid && !gestorImob()
+        && request.resource.data.keys().hasOnly(['nome', 'email', 'imob', 'criadoEm'])
+        && request.resource.data.nome is string && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 60
+        && request.resource.data.email == request.auth.token.email;
+      allow delete: if isAdmin() || (signed() && request.auth.uid == uid);
+    }
+
     match /gestoresImob/{uid} {
       allow read: if signed() && (request.auth.uid == uid || isAdmin());
       allow write: if isAdmin();

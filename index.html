@@ -223,7 +223,7 @@ const configurado=!String(firebaseConfig.apiKey||"").includes("COLE");
 let auth,fs,auth2;
 if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.languageCode="pt";fs=getFirestore(app);auth2=getAuth(initializeApp(firebaseConfig,"cadastro"))}
 
-let isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
+let solicitacoes=new Map(),pedido=null,pedindo=false,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
 let loginModo="escolha",loginErr="",gestorNovo=false,lote=null;
@@ -341,6 +341,20 @@ function viewLogin(){
     <p class="why">Use o nome como a coordenação cadastrou. Se não conseguir entrar, fale com a coordenação.</p></form>
     <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
   }else{
+    if(loginModo==="imob"&&pedindo){
+      const opts=imobs.map(x=>`<option value="${esc(x.k)}" ${dval("sl-imob","")===x.k?"selected":""}>${esc(x.nome)}</option>`).join("");
+      corpo=`<form class="card stack" data-form="solicitar"><h2>Cadastre-se</h2>
+      <p class="note">Cadastro do gestor da imobiliária. Depois de enviar, a coordenação aprova e seu acesso é liberado.</p>
+      <div class="field"><label for="sl-nome">Seu nome</label><input type="text" id="sl-nome" maxlength="60" value="${esc(dval("sl-nome",""))}" required></div>
+      <div class="field"><label for="sl-imob">Imobiliária</label><select id="sl-imob" required><option value="">Selecione</option>${opts}</select></div>
+      <div class="field"><label for="sl-email">E-mail</label><input type="email" id="sl-email" autocomplete="username" value="${esc(dval("sl-email",""))}" required></div>
+      <div class="field"><label for="sl-senha">Crie uma senha</label><input type="password" id="sl-senha" autocomplete="new-password" minlength="6" required><span class="why">Pelo menos 6 caracteres.</span></div>
+      ${loginErr?`<p class="err">${esc(loginErr)}</p>`:""}
+      <button class="btn lg" type="submit" ${ocupado?"disabled":""}>Enviar cadastro para aprovação</button>
+      <button class="link" type="button" data-act="pedir" data-v="0">Já tenho acesso</button></form>
+      <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
+      return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<h1>Meu Plantão</h1><p>Stand de Vendas – Shopping Jequitibá</p></div>${corpo}</div></div>`;
+    }
     corpo=`<form class="card stack" data-form="gestor"><h2>${gestorNovo?"Criar acesso da coordenação":loginModo==="imob"?"Acesso da imobiliária":"Acesso da coordenação"}</h2>
     ${gestorNovo?`<p class="note">Use só na primeira vez, para configurar o sistema. Depois disso, novas contas de gestor não são aceitas.</p>`:""}
     <div class="field"><label for="gs-email">E-mail</label><input type="email" id="gs-email" autocomplete="username" value="${esc(dval("gs-email",""))}" required></div>
@@ -348,6 +362,7 @@ function viewLogin(){
     ${loginErr?`<p class="err">${esc(loginErr)}</p>`:""}
     <button class="btn lg" type="submit" ${ocupado?"disabled":""}>${gestorNovo?"Criar acesso e configurar":"Entrar"}</button>
     ${gestorNovo?"":`<button class="link" type="button" data-act="esqueci">Esqueci minha senha</button>`}
+    ${loginModo==="imob"?`<button class="link" type="button" data-act="pedir" data-v="1">Ainda não tem acesso? <b>Cadastre-se</b></button>`:""}
     ${loginModo==="gestor"?`<button class="link" type="button" data-act="gestornovo">${gestorNovo?"Já tenho acesso":"Primeira vez? Criar acesso da coordenação"}</button>`:""}</form>
     <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
   }
@@ -850,9 +865,16 @@ async function cadastrarGestor(nome,email,k){
   },`Gestor cadastrado. ${email} vai receber um e-mail para criar a senha.`);
   return ok;
 }
+function cardSolicitacoes(){
+  const ss=[...solicitacoes.entries()].sort((a,b)=>(a[1].criadoEm||"").localeCompare(b[1].criadoEm||""));
+  if(!ss.length)return "";
+  return `<section class="card note-card warn"><h2>Cadastros de imobiliária para aprovar (${ss.length})</h2>
+  <div class="list">${ss.map(([u,x])=>`<div class="cor" style="${cores(x.imob)}"><div class="cor-head"><span class="sw"></span><b>${esc(x.nome)}</b><span class="note">${esc(nomeParc(x.imob)||"Imobiliária removida")} · ${esc(x.email)} · pedido em ${x.criadoEm?ddmm(x.criadoEm.slice(0,10)):"—"}</span>
+  <span class="acts"><button class="btn sm" data-act="aprovar" data-uid="${u}" ${ocupado?"disabled":""}>Aprovar</button><button class="btn sm danger" data-act="recusar" data-uid="${u}" ${ocupado?"disabled":""}>Recusar</button></span></div></div>`).join("")}</div></section>`;
+}
 function cardGestoresImob(){
   const gs=[...gestores.entries()].sort((a,b)=>nomeParc(a[1].imob).localeCompare(nomeParc(b[1].imob)));
-  return `<section class="card dobra-card" data-dobra="gestimob"><h2>Gestores de imobiliária (${gs.length})</h2>
+  return cardSolicitacoes()+`<section class="card dobra-card" data-dobra="gestimob"><h2>Gestores de imobiliária (${gs.length})</h2>
   <p class="note">O gestor da imobiliária entra com e-mail e senha, vê só os horários e corretores da imobiliária dele e escolhe quem fica em cada horário. Ligue “Gestor distribui” para os corretores dessa imobiliária não escolherem sozinhos; desligue quando quiser voltar ao normal.</p>
   <div class="stack" style="gap:6px">${imobs.map(x=>{const on=distribui.has(x.k),g=gs.filter(([,v])=>v.imob===x.k);
     return `<div class="row" style="${cores(x.k)}"><button class="switch" role="switch" aria-checked="${on}" data-act="distrib" data-k="${esc(x.k)}" aria-label="Gestor distribui na ${esc(x.nome)}" ${ocupado?"disabled":""}><span class="knob"></span></button><span class="sw"></span><b>${esc(x.nome)}</b><span class="st ${on?"on":""}">${on?"Gestor distribui":"Corretores escolhem"}</span>
@@ -941,9 +963,10 @@ function render(){
   let h;
   if(fase==="login"||fase==="semconfig")h=viewLogin();
   else if(fase==="carregando")h=`<div class="login"><div class="login-head">${LOGO}<h1>Meu Plantão</h1><p>Carregando…</p></div></div>`;
+  else if(fase==="pendente")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<h1>Meu Plantão</h1></div><div class="card stack"><h2>Cadastro em análise</h2><p>Seu cadastro como gestor da <b>${esc(nomeParc(pedido&&pedido.imob))}</b> foi enviado. Assim que a coordenação aprovar, esta tela abre sozinha.</p><button class="btn quiet" data-act="sair">Sair</button></div></div></div>`;
   else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<h1>Meu Plantão</h1></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
   else{
-    const T=isAdmin?[["escala","Escala"],["checkin","Check-in"],["horarios","Horários"],["corretores","Corretores",perfis.size],["liberar","Liberar horários"],["relatorios","Relatórios"],["ajustes","Ajustes"]]
+    const T=isAdmin?[["escala","Escala"],["checkin","Check-in"],["horarios","Horários"],["corretores","Corretores",solicitacoes.size?`${perfis.size} · ${solicitacoes.size} pedido${solicitacoes.size>1?"s":""}`:perfis.size],["liberar","Liberar horários"],["relatorios","Relatórios"],["ajustes","Ajustes"]]
       :isGestor?[["distribuir","Distribuir horários"],["checkin","Check-in"]]
       :[["minhas","Meus plantões",minhas().filter(v=>v.data>=hojeStr).length],["checkin","Check-in"],...(distribui.has(perfil.parceiro)?[]:[["escolher","Escolher horários"]]),["escala","Meu calendário"]];
     const nome=isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome.split(" ")[0]);
@@ -969,7 +992,8 @@ function abrirLib(uid){libEdit=uid;const L=libDe(uid,mes);libDias=new Set((L&&L.
 async function tirarDaLib(b,v){if(!v.corretorId)return;const lr=doc(fs,"liberacoes",`${v.corretorId}_${v.mes}`);const s=await getDoc(lr);if(s.exists())b.update(lr,{escolhidas:arrayRemove(v.id)})}
 async function act(a,ds){
   switch(a){
-    case "modo":loginModo=ds.v;loginErr="";gestorNovo=false;break;
+    case "modo":loginModo=ds.v;loginErr="";gestorNovo=false;pedindo=false;break;
+    case "pedir":pedindo=ds.v==="1";loginErr="";break;
     case "gestornovo":gestorNovo=!gestorNovo;loginErr="";break;
     case "sair":menuAberto=false;await signOut(auth);return;
     case "menu":menuAberto=!menuAberto;break;
@@ -1039,6 +1063,12 @@ async function act(a,ds){
     case "norem":remId=null;break;
     case "pdf":return baixarPdf();
     case "distrib":{const k=ds.k,n=new Set(distribui);n.has(k)?n.delete(k):n.add(k);return run(()=>setDoc(doc(fs,"publico","distribui"),{imobs:[...n]}),`${nomeParc(k)}: ${n.has(k)?"agora o gestor distribui os horários":"os corretores voltam a escolher"}.`)}
+    case "aprovar":{const u=ds.uid,x=solicitacoes.get(u);if(!x)return;
+      return run(async()=>{const b=writeBatch(fs);
+        b.set(doc(fs,"gestoresImob",u),{nome:x.nome,email:x.email,imob:x.imob,criadoEm:new Date().toISOString()});
+        b.set(doc(fs,"publico","distribui"),{imobs:[...new Set([...distribui,x.imob])]});
+        b.delete(doc(fs,"solicitacoes",u));await b.commit()},`${x.nome} aprovado(a) como gestor(a) da ${nomeParc(x.imob)}.`)}
+    case "recusar":{const u=ds.uid,x=solicitacoes.get(u);return run(()=>deleteDoc(doc(fs,"solicitacoes",u)),`Solicitação de ${x?.nome||""} recusada.`)}
     case "askremgest":remGest=ds.uid;break;
     case "noremgest":remGest=null;break;
     case "remgest":{const g=gestores.get(ds.uid);remGest=null;return run(()=>deleteDoc(doc(fs,"gestoresImob",ds.uid)),`${g?.nome||"Gestor"} não tem mais acesso de gestor.`)}
@@ -1204,6 +1234,14 @@ async function submit(form){
       loginErr="Não encontramos um cadastro com esse nome, imobiliária e ano de nascimento. Confira os dados ou fale com a coordenação.";
     }catch(e){loginErr=authMsg(e)}finally{ocupado=false;render()}
   }
+  else if(f==="solicitar"){
+    const nome=g("sl-nome"),k=g("sl-imob"),email=g("sl-email").toLowerCase(),pw=document.getElementById("sl-senha").value;loginErr="";
+    if(!nome||!k||!email){loginErr="Preencha nome, imobiliária e e-mail.";render();return}
+    ocupado=true;cadastrando=true;render();let cred=null;
+    try{cred=await createUserWithEmailAndPassword(auth,email,pw);
+      await setDoc(doc(fs,"solicitacoes",cred.user.uid),{nome,email,imob:k,criadoEm:new Date().toISOString()});pedindo=false}
+    catch(e){if(cred){try{await cred.user.delete()}catch(x){await signOut(auth)}}loginErr=e.code&&String(e.code).startsWith("auth/")?authMsg(e):errMsg(e)}
+    finally{cadastrando=false;ocupado=false;if(auth.currentUser)iniciar(auth.currentUser);else render()}}
   else if(f==="gestor"){
     const email=g("gs-email"),pw=document.getElementById("gs-senha").value;loginErr="";ocupado=true;render();
     if(!gestorNovo){try{await signInWithEmailAndPassword(auth,email,pw)}catch(e){loginErr=authMsg(e)}finally{ocupado=false;render()}return}
@@ -1315,7 +1353,11 @@ async function iniciar(u){
     if(!isAdmin){const gi=await getDoc(doc(fs,"gestoresImob",u.uid));if(gi.exists()){isGestor=true;gImob=gi.data().imob}}
     if(!isAdmin&&!isGestor){const p=await getDoc(doc(fs,"perfis",u.uid));perfil=p.exists()?p.data():null}
   }catch(e){console.error(e)}
-  if(!isAdmin&&!isGestor&&!perfil){fase="semperfil";render();return}
+  if(!isAdmin&&!isGestor&&!perfil){
+    try{const sp=await getDoc(doc(fs,"solicitacoes",u.uid));if(sp.exists()){pedido=sp.data();fase="pendente";render();
+      // quando a coordenação aprovar, entra sozinho
+      subs.push(onSnapshot(doc(fs,"gestoresImob",u.uid),s=>{if(s.exists())iniciar(u)},()=>{}));return}}catch(e){}
+    fase="semperfil";render();return}
   subs.push(onSnapshot(doc(fs,"config","geral"),s=>{cfg={...DEF_CFG,...(s.exists()?s.data():{})};render()},falha));
   subs.push(onSnapshot(collection(fs,"vagas"),s=>{
     vagas=new Map(s.docs.map(d=>[d.id,d.data()]));
@@ -1328,6 +1370,7 @@ async function iniciar(u){
     subs.push(onSnapshot(collection(fs,"perfis"),s=>{perfis=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
     subs.push(onSnapshot(collection(fs,"liberacoes"),s=>{libs=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
     subs.push(onSnapshot(collection(fs,"gestoresImob"),s=>{gestores=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
+    subs.push(onSnapshot(collection(fs,"solicitacoes"),s=>{solicitacoes=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
   }else if(isGestor){
     subs.push(onSnapshot(query(collection(fs,"perfis"),where("parceiro","==",gImob)),s=>{perfis=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
   }else{
