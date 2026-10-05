@@ -1023,7 +1023,7 @@ function render(){
   const a=document.activeElement,fid=a&&root.contains(a)&&a.id,ss=fid&&a.selectionStart,se=fid&&a.selectionEnd;
   let h;
   if(splashAte&&Date.now()<splashAte&&fase!=="semperfil"&&!loginErr){const nm=isAdmin?"":isGestor?nomeParc(gImob):(perfil&&perfil.nome?perfil.nome.split(" ")[0]:"");
-    h=`<div class="login boasvindas" role="status" aria-live="polite"><div class="login-head">${SIMBOLO}<h1>Seja bem-vindo${nm?",":""}</h1>${nm?`<p class="bv-nome">${esc(nm)}</p>`:""}<span class="divisor" aria-hidden="true" style="margin-top:14px"></span><p class="local">Carregando seus plantões…</p></div></div>`}
+    h=`<div class="login boasvindas" role="status" aria-live="polite"><div class="login-head">${SIMBOLO}<h1>Seja bem-vindo(a)${nm?",":""}</h1>${nm?`<p class="bv-nome">${esc(nm)}</p>`:""}<span class="divisor" aria-hidden="true" style="margin-top:14px"></span><p class="local">Carregando seus plantões…</p></div></div>`}
   else if(fase==="login"||fase==="semconfig")h=viewLogin();
   else if(fase==="carregando")h=`<div class="login"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="local">Carregando…</p></div></div>`;
   else if(fase==="pendente")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card stack"><h2>Cadastro em análise</h2><p>Seu cadastro como gestor da <b>${esc(nomeParc(pedido&&pedido.imob))}</b> foi enviado. Assim que a coordenação aprovar, esta tela abre sozinha.</p><button class="btn quiet" data-act="sair">Sair</button></div></div></div>`;
