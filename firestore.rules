@@ -8,6 +8,14 @@ service cloud.firestore {
     function temPerfil() { return signed() && exists(/databases/$(database)/documents/perfis/$(request.auth.uid)); }
     function perfil() { return get(/databases/$(database)/documents/perfis/$(request.auth.uid)).data; }
     function cfg() { return get(/databases/$(database)/documents/config/geral).data; }
+    // Gestor de imobiliária: escolhe quem fica em cada horário da imobiliária dele.
+    function gestorImob() { return signed() && exists(/databases/$(database)/documents/gestoresImob/$(request.auth.uid)); }
+    function imobG() { return get(/databases/$(database)/documents/gestoresImob/$(request.auth.uid)).data.imob; }
+    // Imobiliárias em que, por enquanto, só o gestor dela distribui (o gestor geral liga/desliga).
+    function distribuida(k) {
+      return exists(/databases/$(database)/documents/publico/distribui)
+        && get(/databases/$(database)/documents/publico/distribui).data.get('imobs', []).hasAny([k]);
+    }
 
     // Gestores. A primeira conta de gestor é criada enquanto o sistema ainda não foi configurado.
     // Depois disso, só um gestor pode adicionar outro.
@@ -16,6 +24,11 @@ service cloud.firestore {
       allow create: if signed() && (
         (uid == request.auth.uid && !exists(/databases/$(database)/documents/config/geral)) || isAdmin());
       allow delete: if isAdmin() && uid != request.auth.uid;
+    }
+
+    match /gestoresImob/{uid} {
+      allow read: if signed() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
     }
 
     // Lista de imobiliárias da tela de login: pública para leitura.
@@ -47,7 +60,7 @@ service cloud.firestore {
     // Cadastro do corretor, feito pelo gestor. O corretor só lê o próprio.
     // "inativos" guarda os meses (AAAA-MM) em que ele não participa da escala.
     match /perfis/{uid} {
-      allow read: if signed() && (request.auth.uid == uid || isAdmin());
+      allow read: if signed() && (request.auth.uid == uid || isAdmin() || (gestorImob() && resource.data.parceiro == imobG()));
       allow create: if isAdmin()
         && request.resource.data.keys().hasOnly(['nome', 'parceiro', 'key', 'ano', 'inativos', 'plantao', 'criadoEm'])
         && request.resource.data.nome is string && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 60;
@@ -79,6 +92,7 @@ service cloud.firestore {
         return temPerfil() && cfg().aberta == true
           && !perfil().get('inativos', []).hasAny([resource.data.mes])
           && perfil().get('plantao', true) == true
+          && !distribuida(perfil().parceiro)
           && !resource.data.get('excetoImob', []).hasAny([perfil().parceiro])
           && !resource.data.get('excetoCor', []).hasAny([request.auth.uid])
           && resource.data.aberta == true && resource.data.corretorId == null
@@ -95,7 +109,7 @@ service cloud.firestore {
           && request.resource.data.corretorId == null
           && !getAfter(lib()).data.escolhidas.hasAny([id]);
       }
-      allow read: if isAdmin() || temPerfil();
+      allow read: if isAdmin() || temPerfil() || gestorImob();
       allow create, delete: if isAdmin();
       // Check-in e check-out: só o corretor do plantão, uma vez cada, com o horário do servidor.
       function ponto(campo) {
@@ -107,7 +121,16 @@ service cloud.firestore {
       }
       function checkin() { return ponto('checkin'); }
       function checkout() { return resource.data.get('checkin', null) != null && ponto('checkout'); }
-      allow update: if isAdmin() || escolher() || desistir() || checkin() || checkout();
+      // Gestor de imobiliária: coloca, troca ou tira corretores da imobiliária dele nos horários abertos para ela.
+      function doGestor(uid) { return uid == null || get(/databases/$(database)/documents/perfis/$(uid)).data.parceiro == imobG(); }
+      function atribuir() {
+        return gestorImob() && so(['corretorId', 'escolhidoEm'])
+          && (resource.data.get('restrito', '') == imobG()
+              || (resource.data.get('restrito', '') == '' && !resource.data.get('excetoImob', []).hasAny([imobG()])))
+          && (resource.data.get('aberta', false) == true || resource.data.corretorId != null)
+          && doGestor(resource.data.corretorId) && doGestor(request.resource.data.corretorId);
+      }
+      allow update: if isAdmin() || escolher() || desistir() || checkin() || checkout() || atribuir();
     }
   }
 }

@@ -208,8 +208,8 @@ td.n{font-variant-numeric:tabular-nums}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, collection, query, where, onSnapshot, getDoc, updateDoc, deleteDoc, addDoc, writeBatch, runTransaction, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, collection, query, where, onSnapshot, getDoc, setDoc, updateDoc, deleteDoc, addDoc, writeBatch, runTransaction, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const DOW=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
@@ -221,8 +221,9 @@ const LOGO=`<svg class="logo" viewBox="0 0 1837 164" role="img" aria-label="Alme
 
 const configurado=!String(firebaseConfig.apiKey||"").includes("COLE");
 let auth,fs,auth2;
-if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);fs=getFirestore(app);auth2=getAuth(initializeApp(firebaseConfig,"cadastro"))}
+if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.languageCode="pt";fs=getFirestore(app);auth2=getAuth(initializeApp(firebaseConfig,"cadastro"))}
 
+let isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
 let loginModo="corretor",loginErr="",gestorNovo=false,lote=null;
@@ -261,7 +262,7 @@ const todas=()=>[...vagas.entries()].map(([id,v])=>({id,...v,...(privs.get(id)||
 const doMes=m=>todas().filter(v=>v.data&&v.data.startsWith(m)).sort(sortV);
 const libDe=(uid,m)=>libs.get(`${uid}_${m}`);
 // Nomes ficam só na coleção "privado", que apenas o gestor lê. O corretor só vê se o horário está livre ou é dele.
-const pessoa=uid=>isAdmin?perfis.get(uid):(me&&uid===me.uid?perfil:null);
+const pessoa=uid=>(isAdmin||isGestor)?perfis.get(uid):(me&&uid===me.uid?perfil:null);
 const quem=v=>v.corretorId?(pessoa(v.corretorId)?.nome||(isAdmin?"Corretor(a) removido(a)":"")):(v.nomeFixo||"");
 const parcDe=v=>v.corretorId?(pessoa(v.corretorId)?.parceiro||""):(v.parceiro||v.restrito||"");
 const livre=v=>!!v.aberta&&!v.corretorId;
@@ -308,7 +309,7 @@ function authMsg(e){
   if(c==="auth/invalid-credential"||c==="auth/wrong-password"||c==="auth/user-not-found"||c==="auth/invalid-login-credentials")return loginModo==="corretor"?"O ano de nascimento não confere com o seu cadastro.":"E-mail ou senha incorretos.";
   if(c==="auth/too-many-requests")return "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.";
   if(c==="auth/network-request-failed")return "Sem conexão. Verifique a internet e tente de novo.";
-  if(c==="auth/email-already-in-use")return "Já existe um acesso com este e-mail.";
+  if(c==="auth/email-already-in-use")return "Este e-mail já tem um acesso no Meu Plantão. Use outro e-mail.";
   if(c==="auth/weak-password")return "A senha precisa ter pelo menos 6 caracteres.";
   if(c==="auth/invalid-email")return "Confira o e-mail digitado.";
   if(c==="auth/unauthorized-domain"||c==="auth/requests-from-referer-are-blocked")return "Este endereço ainda não foi autorizado no Firebase (Authentication → Configurações → Domínios autorizados).";
@@ -316,7 +317,7 @@ function authMsg(e){
   if(c==="auth/operation-not-allowed")return "O login por e-mail ainda não foi ativado no Firebase (veja o passo 3 do LEIA-ME).";
   return "Não foi possível entrar agora. Tente de novo.";
 }
-async function run(fn,ok){if(ocupado)return;ocupado=true;render();try{await fn();if(ok)toast(ok)}catch(e){console.error(e);toast(errMsg(e))}finally{ocupado=false;render()}}
+async function run(fn,ok){if(ocupado)return;ocupado=true;render();try{await fn();if(ok)toast(ok)}catch(e){console.error(e);toast(e&&e.code&&String(e.code).startsWith("auth/")?authMsg(e):errMsg(e))}finally{ocupado=false;render()}}
 
 /* ---------- entrada ---------- */
 function viewLogin(){
@@ -339,6 +340,7 @@ function viewLogin(){
     <div class="field"><label for="gs-senha">Senha</label><input type="password" id="gs-senha" autocomplete="${gestorNovo?"new-password":"current-password"}" minlength="6" required></div>
     ${loginErr?`<p class="err">${esc(loginErr)}</p>`:""}
     <button class="btn lg" type="submit" ${ocupado?"disabled":""}>${gestorNovo?"Criar acesso e configurar":"Entrar"}</button>
+    ${gestorNovo?"":`<button class="link" type="button" data-act="esqueci">Esqueci minha senha</button>`}
     <button class="link" type="button" data-act="gestornovo">${gestorNovo?"Já tenho acesso de gestor":"Primeira vez? Criar acesso de gestor"}</button></form>
     <p style="text-align:center"><button class="link" data-act="modo" data-v="corretor">Voltar para o acesso do corretor</button></p>`;
   }
@@ -361,7 +363,7 @@ function slotLine(v,o={}){
   }
   const calBtn=o.mine&&mine&&v.data>=hojeStr?`<button class="btn sm quiet" data-act="ics" data-id="${v.id}" title="Incluir no calendário do celular, com lembretes">${ICONES.escala}Incluir no Calendário</button>`:"";
   if(calBtn)acts=calBtn;
-  if(o.mine&&v.corretorId===me.uid&&v.data>=hojeStr&&cfg.aberta&&cfg.desistir){
+  if(o.mine&&v.corretorId===me.uid&&v.data>=hojeStr&&cfg.aberta&&cfg.desistir&&!distribui.has(perfil.parceiro)){
     if(desistirId===v.id)extra=`<div class="confirm danger"><span>Devolver este plantão para os outros corretores?</span><button class="btn sm danger" data-act="release" data-id="${v.id}" ${ocupado?"disabled":""}>Desistir do plantão</button><button class="btn sm quiet" data-act="cancel">Manter</button></div>`;
     else acts=calBtn+`<button class="btn sm quiet" data-act="askrel" data-id="${v.id}">Desistir</button>`;
   }
@@ -406,6 +408,7 @@ function viewMinhas(){
 function viewEscolher(){
   const L=libDe(me.uid,mes);
   let h=`<div class="toolbar">${mesNav()}</div>`;
+  if(distribui.has(perfil.parceiro))return h+`<div class="vazio"><b>Seus horários são definidos pelo gestor da ${esc(nomeParc(perfil.parceiro))}</b><span>Seus plantões aparecem em “Meus plantões”.</span></div>`;
   if(!ativoNoMes(perfil,mes)||!L||!(L.dias||[]).length)return h+`<div class="vazio"><b>Você não está liberado(a) para plantão em ${mesMin(mes)}</b><span>Quando o gestor liberar dias para você, eles aparecem aqui.</span></div>`;
   if(!cfg.aberta)return h+`<div class="vazio"><b>A escala está fechada no momento</b><span>O gestor abre a escala quando houver horários disponíveis.</span></div>`;
   const usados=(L.escolhidas||[]).length,resta=Math.max(0,L.limite-usados);
@@ -567,6 +570,7 @@ function viewCorretores(){
   const ativos=rows.filter(([,p])=>ativoNoMes(p,mes)).length,semAno=rows.filter(([,p])=>!p.ano).length;
   const pend=naEscalaSemCadastro();
   let h=`<div class="toolbar">${mesNav()}<span class="note">${ativos} ativos em ${mesMin(mes)}${semAno?` · ${semAno} sem ano de nascimento (ainda sem acesso)`:""}</span></div>`;
+  h+=cardGestoresImob();
   const ant=antigos();
   if(ant.length)h+=`<section class="card note-card warn"><h2>Atualizar acesso (${ant.length})</h2><p>${ant.map(([,p])=>esc(p.nome)).join(", ")} ${ant.length===1?"foi cadastrado(a)":"foram cadastrados"} no formato antigo. Clique para atualizar; sem isso, ${ant.length===1?"ele(a) não consegue":"eles não conseguem"} entrar e não dá para editar o cadastro.</p><div class="row"><button class="btn" data-act="converter" ${ocupado?"disabled":""}>Atualizar acesso</button></div></section>`;
   if(pend.length)h+=`<section class="card note-card"><h2>Corretores da escala sem cadastro (${pend.length})</h2>
@@ -751,11 +755,11 @@ function viewCheckinCorretor(){
   return h;
 }
 function viewCheckinGestor(){
-  const agora=new Date(),dia=doMes(presDia.slice(0,7)).filter(v=>v.data===presDia&&(v.corretorId||v.nomeFixo));
+  const agora=new Date(),dia=doMes(presDia.slice(0,7)).filter(v=>v.data===presDia&&(v.corretorId||v.nomeFixo)&&(!isGestor||perfis.has(v.corretorId)));
   const st=cfg.stand;
   let h=`<div class="toolbar"><div class="mesnav"><button class="iconbtn" data-act="presdia" data-d="-1" aria-label="Dia anterior">‹</button><b>${DOW[dowOf(presDia)]} ${ddmm(presDia)}</b><button class="iconbtn" data-act="presdia" data-d="1" aria-label="Próximo dia">›</button></div>
   ${presDia!==hojeStr?`<button class="btn sm quiet" data-act="presdia" data-d="0">Hoje</button>`:""}</div>`;
-  if(!st||st.lat==null)h+=`<div class="card note-card warn"><p>Defina a localização do stand em <b>Ajustes → Local do stand</b>. Sem ela, os corretores não conseguem fazer check-in.</p></div>`;
+  if(isAdmin&&(!st||st.lat==null))h+=`<div class="card note-card warn"><p>Defina a localização do stand em <b>Ajustes → Local do stand</b>. Sem ela, os corretores não conseguem fazer check-in.</p></div>`;
   if(dia.length){
     const ps=dia.map(v=>({v,p:presenca(v,agora),k:parcDe(v)||"__sem"}));
     const cont=c=>ps.filter(x=>x.p.cod===c).length,falt=cont("falta")+cont("atrasado");
@@ -769,7 +773,7 @@ function viewCheckinGestor(){
   }else h+=`<div class="vazio"><b>Nenhum plantão com corretor neste dia</b></div>`;
   // resumo do mês
   const m=presDia.slice(0,7),g=new Map();
-  doMes(m).filter(v=>v.corretorId&&quando(v.data,v.ini)<=agora).forEach(v=>{const p=presenca(v,agora),k=v.corretorId;
+  doMes(m).filter(v=>v.corretorId&&(!isGestor||perfis.has(v.corretorId))&&quando(v.data,v.ini)<=agora).forEach(v=>{const p=presenca(v,agora),k=v.corretorId;
     if(!g.has(k))g.set(k,{nome:quem(v),imob:nomeParc(parcDe(v)),n:0,pres:0,faltas:0,atrasos:0,min:0});
     const x=g.get(k);x.n++;if(p.ci)x.pres++;if(p.cod==="falta")x.faltas++;if(p.atraso>tolerancia())x.atrasos++;if(p.min)x.min+=p.min});
   const rows=[...g.values()].sort((a,b)=>a.imob.localeCompare(b.imob)||a.nome.localeCompare(b.nome));
@@ -790,6 +794,67 @@ function cardLocalStand(){
   <div class="field"><label for="sd-raio">Raio aceito (metros)</label><input type="number" id="sd-raio" min="30" max="1000" value="${esc(dval("sd-raio",st.raio||150))}"></div>
   <div class="field"><label for="sd-tol">Tolerância de atraso (minutos)</label><input type="number" id="sd-tol" min="0" max="120" value="${esc(dval("sd-tol",tolerancia()))}"></div>
   <div class="field" style="align-self:end"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Salvar</button></div></form></section>`;
+}
+/* ---------- gestor de imobiliária ---------- */
+// Horários que o gestor da imobiliária distribui: reservados para ela (ou abertos só para ela),
+// mais os que já estão com corretores dela.
+function paraImob(v){
+  if(v.corretorId&&perfis.has(v.corretorId))return true;
+  if(!v.aberta&&!v.corretorId)return false;
+  if(v.restrito)return v.restrito===gImob;
+  const ex=v.excetoImob||[];
+  return !ex.includes(gImob)&&imobs.filter(x=>x.k!==gImob).every(x=>ex.includes(x.k));
+}
+function viewDistribuir(){
+  const lista=doMes(mes).filter(paraImob),cors=[...perfis.entries()].sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+  const preenc=lista.filter(v=>v.corretorId).length;
+  let h=`<div class="toolbar">${mesNav()}<span class="note">${lista.length} horários · ${preenc} preenchidos · ${lista.length-preenc} livres</span></div>`;
+  if(!lista.length)return h+`<div class="vazio"><b>Nenhum horário reservado para a ${esc(nomeParc(gImob))} em ${mesMin(mes)}</b><span>Os dias da imobiliária são definidos pela coordenação. Quando forem reservados, aparecem aqui.</span></div>`;
+  h+=`<p class="note" style="margin:0">Escolha o corretor de cada horário. A alteração vale na hora e o corretor vê em “Meus plantões”.</p>`;
+  const opc=(v)=>{const atual=v.corretorId,ativos=cors.filter(([u,p])=>ativoNoMes(p,v.mes)||u===atual);
+    return `<option value="">— livre —</option>${ativos.map(([u,p])=>`<option value="${esc(u)}" ${u===atual?"selected":""}>${esc(p.nome)}</option>`).join("")}`};
+  const dias=[...new Set(lista.map(v=>v.data))].sort();
+  h+=dias.map(d=>`<article class="item ${d<hojeStr?"past":""}"><div class="date"><b>${pad(dnum(d))}</b><span>${DOW[dowOf(d)]}</span></div><div class="slots">${lista.filter(v=>v.data===d).map(v=>{
+    const p=v.checkin?presenca(v):null;
+    return `<div class="slot"><span class="hr">${esc(v.ini)} às ${esc(v.fim)}</span>${v.local?`<span class="loc">${esc(v.local)}</span>`:""}
+    <span class="acts"><select id="dist-${v.id}" aria-label="Corretor de ${ddmm(d)} ${esc(v.ini)}" style="width:auto;min-width:16ch" ${d<hojeStr||ocupado?"disabled":""}>${opc(v)}</select></span>${p?`<span style="flex-basis:100%">${pillPres(p)}</span>`:""}</div>`}).join("")}</div></article>`).join("");
+  const cont=cors.map(([u,p])=>({p,n:lista.filter(v=>v.corretorId===u).length})).filter(x=>x.n||ativoNoMes(x.p,mes));
+  h+=`<section class="card dobra-card" data-dobra="dist-cont"><h2>Plantões por corretor em ${mesMin(mes)}</h2><div class="tablewrap"><table><thead><tr><th>Corretor</th><th>Plantões</th></tr></thead><tbody>${cont.map(x=>`<tr><td>${esc(x.p.nome)}</td><td class="n">${x.n}</td></tr>`).join("")}</tbody></table></div></section>`;
+  return h;
+}
+async function atribuirVaga(id,uid){
+  return run(()=>updateDoc(doc(fs,"vagas",id),{corretorId:uid||null,escolhidoEm:uid?new Date().toISOString():null}),uid?`${perfis.get(uid)?.nome||"Corretor"} definido no horário.`:"Horário deixado livre.");
+}
+// Gestor geral: cadastro dos gestores de imobiliária e o interruptor "gestor distribui".
+async function cadastrarGestor(nome,email,k){
+  nome=String(nome||"").trim();email=String(email||"").trim().toLowerCase();
+  if(!nome||!email||!k){toast("Preencha nome, e-mail e imobiliária.");return false}
+  let ok=false;
+  await run(async()=>{
+    const cred=await createUserWithEmailAndPassword(auth2,email,senhaAleatoria());
+    try{
+      const b=writeBatch(fs);
+      b.set(doc(fs,"gestoresImob",cred.user.uid),{nome,email,imob:k,criadoEm:new Date().toISOString()});
+      b.set(doc(fs,"publico","distribui"),{imobs:[...new Set([...distribui,k])]});
+      await b.commit();
+    }catch(e){try{await cred.user.delete()}catch(x){} throw e}
+    finally{try{await signOut(auth2)}catch(x){}}
+    await sendPasswordResetEmail(auth,email);ok=true;
+  },`Gestor cadastrado. ${email} vai receber um e-mail para criar a senha.`);
+  return ok;
+}
+function cardGestoresImob(){
+  const gs=[...gestores.entries()].sort((a,b)=>nomeParc(a[1].imob).localeCompare(nomeParc(b[1].imob)));
+  return `<section class="card dobra-card" data-dobra="gestimob"><h2>Gestores de imobiliária (${gs.length})</h2>
+  <p class="note">O gestor da imobiliária entra com e-mail e senha, vê só os horários e corretores da imobiliária dele e escolhe quem fica em cada horário. Ligue “Gestor distribui” para os corretores dessa imobiliária não escolherem sozinhos; desligue quando quiser voltar ao normal.</p>
+  <div class="stack" style="gap:6px">${imobs.map(x=>{const on=distribui.has(x.k),g=gs.filter(([,v])=>v.imob===x.k);
+    return `<div class="row" style="${cores(x.k)}"><button class="switch" role="switch" aria-checked="${on}" data-act="distrib" data-k="${esc(x.k)}" aria-label="Gestor distribui na ${esc(x.nome)}" ${ocupado?"disabled":""}><span class="knob"></span></button><span class="sw"></span><b>${esc(x.nome)}</b><span class="st ${on?"on":""}">${on?"Gestor distribui":"Corretores escolhem"}</span>
+    <span class="note">${g.length?g.map(([,v])=>esc(v.nome)+" ("+esc(v.email)+")").join(", "):"sem gestor"}</span>${g.map(([u,v])=>remGest===u?`<button class="btn sm danger" data-act="remgest" data-uid="${u}">Confirmar</button><button class="btn sm quiet" data-act="noremgest">Cancelar</button>`:`<button class="btn sm quiet" data-act="askremgest" data-uid="${u}" title="Remover ${esc(v.nome)}">Remover ${esc(v.nome.split(" ")[0])}</button>`).join("")}</div>`}).join("")}</div>
+  <form class="form" data-form="novogest">
+  <div class="field"><label for="ng-nome">Nome do gestor</label><input type="text" id="ng-nome" maxlength="60" value="${esc(dval("ng-nome",""))}" required></div>
+  <div class="field"><label for="ng-email">E-mail</label><input type="email" id="ng-email" value="${esc(dval("ng-email",""))}" required></div>
+  <div class="field"><label for="ng-imob">Imobiliária</label><select id="ng-imob" required><option value="">Selecione</option>${imobs.map(x=>`<option value="${esc(x.k)}" ${dval("ng-imob","")===x.k?"selected":""}>${esc(x.nome)}</option>`).join("")}</select></div>
+  <div class="field" style="align-self:end"><button class="btn" type="submit" ${ocupado?"disabled":""}>Cadastrar gestor</button></div></form></section>`;
 }
 /* ---------- calendário (.ics) ---------- */
 // Horários do stand são de Brasília/Bahia (UTC−3, sem horário de verão): convertidos para UTC no arquivo.
@@ -872,15 +937,16 @@ function render(){
   else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<h1>Meu Plantão</h1></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
   else{
     const T=isAdmin?[["escala","Escala"],["checkin","Check-in"],["horarios","Horários"],["corretores","Corretores",perfis.size],["liberar","Liberar horários"],["relatorios","Relatórios"],["ajustes","Ajustes"]]
-      :[["minhas","Meus plantões",minhas().filter(v=>v.data>=hojeStr).length],["checkin","Check-in"],["escolher","Escolher horários"],["escala","Meu calendário"]];
-    const nome=isAdmin?"Gestor":esc(perfil.nome.split(" ")[0]);
-    const sub=isAdmin?esc(me.email||""):esc(nomeParc(perfil.parceiro));
-    const ini=isAdmin?"G":esc(perfil.nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase());
-    const corpo=tab==="checkin"?(isAdmin?viewCheckinGestor():viewCheckinCorretor()):tab==="minhas"?viewMinhas():tab==="escolher"?viewEscolher():tab==="escala"?viewEscala():tab==="liberar"?viewLiberar():tab==="horarios"?viewHorarios():tab==="corretores"?viewCorretores():tab==="relatorios"?viewRelatorios():viewAjustes();
+      :isGestor?[["distribuir","Distribuir horários"],["checkin","Check-in"]]
+      :[["minhas","Meus plantões",minhas().filter(v=>v.data>=hojeStr).length],["checkin","Check-in"],...(distribui.has(perfil.parceiro)?[]:[["escolher","Escolher horários"]]),["escala","Meu calendário"]];
+    const nome=isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome.split(" ")[0]);
+    const sub=(isAdmin||isGestor)?esc(me.email||""):esc(nomeParc(perfil.parceiro));
+    const ini=(isAdmin||isGestor)?"G":esc(perfil.nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase());
+    const corpo=tab==="distribuir"?viewDistribuir():tab==="checkin"?((isAdmin||isGestor)?viewCheckinGestor():viewCheckinCorretor()):tab==="minhas"?viewMinhas():tab==="escolher"?viewEscolher():tab==="escala"?viewEscala():tab==="liberar"?viewLiberar():tab==="horarios"?viewHorarios():tab==="corretores"?viewCorretores():tab==="relatorios"?viewRelatorios():viewAjustes();
     h=`<div class="wrap"><header class="top"><div class="marca-nome">${LOGO}<span class="sep" aria-hidden="true"></span><h1>Meu Plantão</h1></div>
     <div class="who"><span class="pill ${cfg.aberta?"ok":"warn"}">${cfg.aberta?"Escala em aberto":"Escala fechada"}</span>
     <div class="usermenu"><button class="userbtn" data-act="menu" aria-haspopup="menu" aria-expanded="${menuAberto}"><span class="av">${ini}</span><span class="nm">${nome}</span>${ICONES.seta}</button>
-    ${menuAberto?`<div class="dropdown" role="menu"><div class="info"><b>${isAdmin?"Gestor":esc(perfil.nome)}</b><span>${sub}</span></div><button role="menuitem" data-act="sair">${ICONES.sair}Sair</button></div>`:""}</div></div></header>
+    ${menuAberto?`<div class="dropdown" role="menu"><div class="info"><b>${isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome)}</b><span>${sub}</span></div><button role="menuitem" data-act="sair">${ICONES.sair}Sair</button></div>`:""}</div></div></header>
     <nav class="tabs" role="tablist" aria-label="Seções">${T.map(([k,l,n])=>`<button class="tab" role="tab" data-act="tab" data-v="${k}" aria-selected="${tab===k}">${ICONES[k]||""}${l}${n!==undefined?`<span class="n">${n}</span>`:""}</button>`).join("")}</nav>
     <main class="list">${corpo}</main></div>`;
   }
@@ -965,6 +1031,12 @@ async function act(a,ds){
     case "askrem":remId=ds.uid;break;
     case "norem":remId=null;break;
     case "pdf":return baixarPdf();
+    case "distrib":{const k=ds.k,n=new Set(distribui);n.has(k)?n.delete(k):n.add(k);return run(()=>setDoc(doc(fs,"publico","distribui"),{imobs:[...n]}),`${nomeParc(k)}: ${n.has(k)?"agora o gestor distribui os horários":"os corretores voltam a escolher"}.`)}
+    case "askremgest":remGest=ds.uid;break;
+    case "noremgest":remGest=null;break;
+    case "remgest":{const g=gestores.get(ds.uid);remGest=null;return run(()=>deleteDoc(doc(fs,"gestoresImob",ds.uid)),`${g?.nome||"Gestor"} não tem mais acesso de gestor.`)}
+    case "esqueci":{const em=(document.getElementById("gs-email")?.value||"").trim();if(!em){loginErr="Digite seu e-mail acima e toque em “Esqueci minha senha”.";break}
+      try{await sendPasswordResetEmail(auth,em);loginErr="";toast("Enviamos um e-mail para criar uma nova senha. Confira também o spam.")}catch(e){loginErr=authMsg(e)}break}
     case "checkin":return marcarPonto(ds.id,"checkin");
     case "checkout":return marcarPonto(ds.id,"checkout");
     case "presdia":{if(+ds.d===0)presDia=hojeStr;else{const dt=quando(presDia,"12:00");dt.setDate(dt.getDate()+ +ds.d);presDia=`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`}break}
@@ -1167,6 +1239,7 @@ async function submit(form){
     else if(g("sd-coord")){toast("Coordenadas inválidas. Use o formato: -14.79, -39.27");return}
     else if(stand)stand={...stand,raio};
     await run(()=>updateDoc(doc(fs,"config","geral"),{...(stand?{stand}:{}),tolerancia:tol}),"Local do stand salvo.");["sd-coord","sd-raio","sd-tol"].forEach(k=>delete drafts[k]);render()}
+  else if(f==="novogest"){if(await cadastrarGestor(g("ng-nome"),g("ng-email"),g("ng-imob"))){["ng-nome","ng-email","ng-imob"].forEach(k=>delete drafts[k]);render()}}
   else if(f==="cfg"){
     const fer=g("cf-fer").split(/[,;\s]+/).filter(Boolean).map(s=>{const m=s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);return m?`${m[3]||mes.slice(0,4)}-${pad(+m[2])}-${pad(+m[1])}`:null}).filter(Boolean);
     await run(()=>updateDoc(doc(fs,"config","geral"),{desistir:g("cf-des"),aviso:g("cf-av"),feriados:fer}),"Ajustes salvos.");["cf-des","cf-av","cf-fer"].forEach(k=>delete drafts[k]);render()}
@@ -1220,6 +1293,7 @@ document.addEventListener("submit",e=>{e.preventDefault();submit(e.target)});
 const keep=e=>{const t=e.target;if(t.id&&t.type!=="password")drafts[t.id]=t.type==="checkbox"?t.checked:t.value;
   if(e.type==="change"&&t.id&&t.id.startsWith("rel-")){if(t.id==="rel-tipo")relTipo=t.value;if(t.id==="rel-imob"){relImob=t.value;relCor=""}if(t.id==="rel-cor")relCor=t.value;render()}
   if(e.type==="change"&&t.id==="nv-modo"){nvModo=t.value;render()}
+  if(e.type==="change"&&t.id&&t.id.startsWith("dist-")){delete drafts[t.id];atribuirVaga(t.id.slice(5),t.value)}
   if(e.type==="change"&&t.id&&t.id.startsWith("hp-q-")){hpQuem[t.id.slice(5)]=t.value;try{localStorage.setItem("mp-hpQuem",JSON.stringify(hpQuem))}catch(x){}render()}
   if(e.type==="change"&&["hp-meses","lb-imob","lb-excl"].includes(t.id)){if(t.id==="hp-meses")hpMeses=t.value;if(t.id==="lb-imob")lbImob=t.value;if(t.id==="lb-excl")lbExcl=t.checked;render()}};
 document.addEventListener("input",keep);document.addEventListener("change",keep);
@@ -1228,12 +1302,13 @@ document.addEventListener("input",keep);document.addEventListener("change",keep)
 function parar(){subs.forEach(f=>f());subs=[];vagas=new Map();privs=new Map();creds=new Map();perfis=new Map();libs=new Map()}
 const falha=e=>{console.error(e);if(e.code!=="permission-denied")toast("A conexão com a escala caiu. Recarregue a página.")};
 async function iniciar(u){
-  parar();me=u;isAdmin=false;perfil=null;fase="carregando";render();
+  parar();me=u;isAdmin=false;isGestor=false;gImob="";perfil=null;fase="carregando";render();
   try{
     const a=await getDoc(doc(fs,"admins",u.uid));isAdmin=a.exists();
-    if(!isAdmin){const p=await getDoc(doc(fs,"perfis",u.uid));perfil=p.exists()?p.data():null}
+    if(!isAdmin){const gi=await getDoc(doc(fs,"gestoresImob",u.uid));if(gi.exists()){isGestor=true;gImob=gi.data().imob}}
+    if(!isAdmin&&!isGestor){const p=await getDoc(doc(fs,"perfis",u.uid));perfil=p.exists()?p.data():null}
   }catch(e){console.error(e)}
-  if(!isAdmin&&!perfil){fase="semperfil";render();return}
+  if(!isAdmin&&!isGestor&&!perfil){fase="semperfil";render();return}
   subs.push(onSnapshot(doc(fs,"config","geral"),s=>{cfg={...DEF_CFG,...(s.exists()?s.data():{})};render()},falha));
   subs.push(onSnapshot(collection(fs,"vagas"),s=>{
     vagas=new Map(s.docs.map(d=>[d.id,d.data()]));
@@ -1245,18 +1320,22 @@ async function iniciar(u){
     subs.push(onSnapshot(collection(fs,"privado"),s=>{privs=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
     subs.push(onSnapshot(collection(fs,"perfis"),s=>{perfis=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
     subs.push(onSnapshot(collection(fs,"liberacoes"),s=>{libs=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
+    subs.push(onSnapshot(collection(fs,"gestoresImob"),s=>{gestores=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
+  }else if(isGestor){
+    subs.push(onSnapshot(query(collection(fs,"perfis"),where("parceiro","==",gImob)),s=>{perfis=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
   }else{
     subs.push(onSnapshot(doc(fs,"perfis",u.uid),s=>{if(s.exists()){perfil=s.data();render()}else signOut(auth)},falha));
     subs.push(onSnapshot(query(collection(fs,"liberacoes"),where("uid","==",u.uid)),s=>{libs=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
   }
-  tab=isAdmin?"escala":"minhas";fase="ok";render();
+  tab=isAdmin?"escala":isGestor?"distribuir":"minhas";fase="ok";render();
 }
 setInterval(()=>{if(fase==="ok"&&tab==="checkin"&&!ocupado&&!(document.activeElement&&document.activeElement.id))render()},60000);
 if(configurado){
   onSnapshot(doc(fs,"publico","imobiliarias"),s=>{imobs=s.exists()?(s.data().lista||[]):[];render()},e=>console.error(e));
+  onSnapshot(doc(fs,"publico","distribui"),s=>{distribui=new Set(s.exists()?(s.data().imobs||[]):[]);render()},e=>console.error(e));
   onAuthStateChanged(auth,u=>{
     if(cadastrando)return;
-    if(!u){parar();me=null;isAdmin=false;perfil=null;fase="login";render();return}
+    if(!u){parar();me=null;isAdmin=false;isGestor=false;gImob="";perfil=null;fase="login";render();return}
     iniciar(u);
   });
 }else render();
