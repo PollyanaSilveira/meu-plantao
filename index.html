@@ -512,7 +512,7 @@ function viewEscala(){
       return `<article class="item item-${est.cls}"><div class="date"><b>${pad(dnum(v.data))}</b><span>${DOW[dowOf(v.data)]}</span></div><div class="slots">
       <div class="slot"><span class="hr">${esc(v.ini)} às ${esc(v.fim)}</span><span class="note">${hrs(v)}h</span><span class="tag ${est.cls}" style="display:inline-flex;padding:2px 8px">${est.txt}</span>${ehFeriado(v.data)?`<span class="fer">FERIADO</span>`:""}${v.local?`<span class="loc">${esc(v.local)}</span>`:""}${p?pillPres(p):""}</div>
       <div class="note">Stand de Vendas – Shopping Jequitibá${v.obs?` · ${esc(v.obs)}`:""}${v.checkin&&tsData(v.checkin)?` · check-in ${hm(tsData(v.checkin))}`:""}${v.checkout&&tsData(v.checkout)?` · check-out ${hm(tsData(v.checkout))}`:""}</div></div></article>`}).join("");
-    const leg=[["st-futuro","Próximo"],["st-agora","Agora"],["st-feito","Feito com check-in"],["st-passado","Passado sem check-in"]].map(([c,l])=>`<span class="leg"><span class="leg-cor ${c}"></span>${l}</span>`).join("");
+    const leg=[["st-futuro","Próximo"],["st-agora","Agora"],["st-feito","Feito com check-in"],["st-passado","Concluído sem check-in"]].map(([c,l])=>`<span class="leg"><span class="leg-cor ${c}"></span>${l}</span>`).join("");
     h+=`<div class="main"><div class="stack" style="gap:8px">${calendario(meus,{estado:true})}<div class="row legenda">${leg}</div></div><section class="list" aria-label="Meus plantões do mês">${det}</section></div>`;
     return h+`<p class="note">Aqui você só visualiza seus plantões. Para escolher, use a aba “Escolher horários”.</p>`;
   }
@@ -1019,7 +1019,7 @@ function cardProximoMes(){
 // Situação visual de um plantão do corretor em "Meu calendário".
 function estadoPlantao(v,agora=new Date()){
   if(tsData(v.checkin))return {cls:"st-feito",txt:"✓ Feito"};
-  if(quando(v.data,v.fim)<agora)return {cls:"st-passado",txt:"Passado"};
+  if(quando(v.data,v.fim)<agora)return {cls:"st-passado",txt:"Concluído"};
   if(quando(v.data,v.ini)<=agora)return {cls:"st-agora",txt:"Agora"};
   return {cls:"st-futuro",txt:"Seu plantão"};
 }
