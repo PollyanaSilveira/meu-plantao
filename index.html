@@ -154,6 +154,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 button.tag{cursor:pointer}
 .tag .th{font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tag .tn{font-weight:500;font-size:.68rem;overflow-wrap:anywhere;color:var(--fg)}
+.tag.st-futuro{background:var(--accent);color:var(--accent-fg);border-left-color:var(--accent)}
+.tag.st-futuro .tn,.tag.st-feito .tn,.tag.st-agora .tn{color:inherit;font-weight:700}
+.tag.st-agora{background:var(--sky);color:var(--navy);border-left-color:var(--sky)}
+.tag.st-feito{background:var(--ok);color:var(--accent-fg);border-left-color:var(--ok)}
+.tag.st-passado{background:var(--soft);color:var(--muted);border-left-color:var(--line)}
+.tag.st-passado .tn{color:var(--muted)}
+.item-st-feito{border-left:4px solid var(--ok)}
+.item-st-agora{border-left:4px solid var(--sky)}
+.item-st-futuro{border-left:4px solid var(--accent)}
+.item-st-passado{border-left:4px solid var(--line);opacity:.75}
+.legenda{gap:6px 14px;font-size:.8rem;color:var(--muted)}
+.leg{display:inline-flex;align-items:center;gap:6px}
+.leg-cor{width:12px;height:12px;border-radius:3px;display:inline-block}
+.leg-cor.st-futuro{background:var(--accent)}.leg-cor.st-agora{background:var(--sky)}.leg-cor.st-feito{background:var(--ok)}.leg-cor.st-passado{background:var(--soft);border:1px solid var(--line)}
 .tag.verde{background:var(--ok);color:var(--accent-fg);border-left-color:var(--ok);cursor:pointer}
 .tag.verde .tn{color:var(--accent-fg);font-weight:700}
 .tag.verde:hover{filter:brightness(1.1)}
@@ -244,7 +258,7 @@ td.n{font-variant-numeric:tabular-nums}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, collection, query, where, onSnapshot, getDoc, setDoc, updateDoc, deleteDoc, addDoc, writeBatch, runTransaction, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, collection, query, where, onSnapshot, getDoc, setDoc, updateDoc, deleteDoc, addDoc, writeBatch, runTransaction, arrayRemove, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const DOW=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
@@ -259,7 +273,7 @@ const configurado=!String(firebaseConfig.apiKey||"").includes("COLE");
 let auth,fs,auth2;
 if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.languageCode="pt";fs=getFirestore(app);auth2=getAuth(initializeApp(firebaseConfig,"cadastro"))}
 
-let libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,splashAte=0,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
+let ajusteCi=null,libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,splashAte=0,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
 let loginModo="escolha",loginErr="",gestorNovo=false,lote=null;
@@ -446,10 +460,11 @@ function calendario(lista,o={}){
   return `<section class="cal" aria-label="Calendário de ${nomeMes(mes)}">${gradeDias((ds,d)=>{
     const r=lista.filter(v=>v.data===ds);
     const tags=r.map(v=>{const isL=livre(v),mine=minha(v),p=parcDe(v);
-      const nm=isL?(isAdmin?"Livre":"Disponível"):(mine?"Seu plantão":(quem(v)||nomeParc(p)||"Reservado"));
+      const est=o.estado&&mine?estadoPlantao(v):null;
+      const nm=est?est.txt:isL?(isAdmin?"Livre":"Disponível"):(mine?"Seu plantão":(quem(v)||nomeParc(p)||"Reservado"));
       const clic=isAdmin?`data-act="edit" data-id="${v.id}"`:(isL&&!motivo(v)?`data-act="${o.escolher?"ask":"pickcal"}" data-id="${v.id}"`:"");
       const tg=clic?"button":"div";
-      return `<${tg} class="tag ${isL?(isAdmin?"livre":"verde"):""} ${mine?"mine":""} ${confirmId===v.id?"sel":""}" ${clic} style="${cores(p)}" title="${esc(nm)} · ${esc(v.ini)} às ${esc(v.fim)}"><span class="th">${esc(v.ini)}–${esc(v.fim)}</span><span class="tn">${esc(nm)}</span></${tg}>`}).join("");
+      return `<${tg} class="tag ${isL?(isAdmin?"livre":"verde"):""} ${mine&&!est?"mine":""} ${est?est.cls:""} ${confirmId===v.id?"sel":""}" ${clic} style="${cores(p)}" title="${esc(nm)} · ${esc(v.ini)} às ${esc(v.fim)}"><span class="th">${esc(v.ini)}–${esc(v.fim)}</span><span class="tn">${esc(nm)}</span></${tg}>`}).join("");
     return `<div class="day ${r.length?"has":""}"><div class="num">${pad(d)}${ehFeriado(ds)?'<span class="fer">FERIADO</span>':""}</div>${tags}</div>`;
   })}</section>`;
 }
@@ -493,10 +508,12 @@ function viewEscala(){
     <div class="stats"><div class="stat"><b>${meus.length}</b><span>${meus.length===1?"plantão":"plantões"} em ${mesMin(mes)}</span></div><div class="stat"><b>${totH}h</b><span>de plantão no mês</span></div><div class="stat"><b>${prox?`${ddmm(prox.data)}`:"—"}</b><span>${prox?`próximo · ${esc(prox.ini)} às ${esc(prox.fim)}`:"sem próximos neste mês"}</span></div></div>`;
     if(!meus.length)return h+`<div class="vazio"><b>Você não tem plantões em ${mesMin(mes)}</b><span>Para escolher horários, use a aba “Escolher horários”.</span></div>`;
     const det=meus.map(v=>{const p=quando(v.data,v.ini)<=agora?presenca(v,agora):null;
-      return `<article class="item ${quando(v.data,v.fim)<agora?"past":""}"><div class="date"><b>${pad(dnum(v.data))}</b><span>${DOW[dowOf(v.data)]}</span></div><div class="slots">
-      <div class="slot"><span class="hr">${esc(v.ini)} às ${esc(v.fim)}</span><span class="note">${hrs(v)}h</span>${ehFeriado(v.data)?`<span class="fer">FERIADO</span>`:""}${v.local?`<span class="loc">${esc(v.local)}</span>`:""}${p?pillPres(p):""}</div>
+      const est=estadoPlantao(v,agora);
+      return `<article class="item item-${est.cls}"><div class="date"><b>${pad(dnum(v.data))}</b><span>${DOW[dowOf(v.data)]}</span></div><div class="slots">
+      <div class="slot"><span class="hr">${esc(v.ini)} às ${esc(v.fim)}</span><span class="note">${hrs(v)}h</span><span class="tag ${est.cls}" style="display:inline-flex;padding:2px 8px">${est.txt}</span>${ehFeriado(v.data)?`<span class="fer">FERIADO</span>`:""}${v.local?`<span class="loc">${esc(v.local)}</span>`:""}${p?pillPres(p):""}</div>
       <div class="note">Stand de Vendas – Shopping Jequitibá${v.obs?` · ${esc(v.obs)}`:""}${v.checkin&&tsData(v.checkin)?` · check-in ${hm(tsData(v.checkin))}`:""}${v.checkout&&tsData(v.checkout)?` · check-out ${hm(tsData(v.checkout))}`:""}</div></div></article>`}).join("");
-    h+=`<div class="main">${calendario(meus)}<section class="list" aria-label="Meus plantões do mês">${det}</section></div>`;
+    const leg=[["st-futuro","Próximo"],["st-agora","Agora"],["st-feito","Feito com check-in"],["st-passado","Passado sem check-in"]].map(([c,l])=>`<span class="leg"><span class="leg-cor ${c}"></span>${l}</span>`).join("");
+    h+=`<div class="main"><div class="stack" style="gap:8px">${calendario(meus,{estado:true})}<div class="row legenda">${leg}</div></div><section class="list" aria-label="Meus plantões do mês">${det}</section></div>`;
     return h+`<p class="note">Aqui você só visualiza seus plantões. Para escolher, use a aba “Escolher horários”.</p>`;
   }
   const lista=doMes(mes),tot=lista,liv=tot.filter(livre).length;
@@ -860,7 +877,7 @@ function viewCheckinGestor(){
       const res=[["em","em plantão"],["ok","concluídos"],["atrasado","não chegou"],["falta","faltas"],["semco","sem check-out"],["aguarda","aguardando"]].map(([c,l])=>{const n=g.filter(x=>x.p.cod===c).length;return n?`${n} ${l}`:""}).filter(Boolean).join(" · ");
       const alerta=g.some(x=>x.p.cod==="falta"||x.p.cod==="atrasado");
       return `<div class="stack grupo-imob dobra-card" data-dobra="ci-${esc(k)}" style="gap:8px"><div class="row" style="${cores(k)}"><span class="sw"></span><b>${esc(nome)}</b><span class="note">${g.length} ${g.length===1?"plantão":"plantões"}${res?" · "+res:""}</span>${alerta?`<span class="pill" style="background:var(--badbg);color:var(--bad)">Atenção</span>`:""}</div>
-      <div class="tablewrap"><table><thead><tr><th>Horário</th><th>Corretor</th><th>Check-in</th><th>Check-out</th><th>Situação</th></tr></thead><tbody>${g.map(({v,p})=>`<tr><td class="n">${esc(v.ini)}–${esc(v.fim)}</td><td>${esc(quem(v)||"—")}</td><td class="n">${hm(p.ci)}${v.checkin&&v.checkin.dist!=null?` <span class="why">${v.checkin.dist} m</span>`:""}</td><td class="n">${hm(tsData(v.checkout))}</td><td>${pillPres(p)}</td></tr>`).join("")}</tbody></table></div></div>`}).join("")+`</section>`;
+      <div class="tablewrap"><table><thead><tr><th>Horário</th><th>Corretor</th><th>Check-in</th><th>Check-out</th><th>Situação</th>${isAdmin?"<th></th>":""}</tr></thead><tbody>${g.map(({v,p})=>`<tr><td class="n">${esc(v.ini)}–${esc(v.fim)}</td><td>${esc(quem(v)||"—")}</td><td class="n">${hm(p.ci)}${v.checkin&&v.checkin.manual?` <span class="why">ajustado</span>`:v.checkin&&v.checkin.dist!=null?` <span class="why">${v.checkin.dist} m</span>`:""}</td><td class="n">${hm(tsData(v.checkout))}</td><td>${pillPres(p)}</td>${isAdmin&&v.corretorId?`<td><button class="btn sm quiet" data-act="ajci" data-id="${v.id}">${ajusteCi===v.id?"Fechar":"Ajustar"}</button></td>`:isAdmin?"<td></td>":""}</tr>${isAdmin&&ajusteCi===v.id?`<tr><td colspan="6">${formAjusteCi(v)}</td></tr>`:""}`).join("")}</tbody></table></div></div>`}).join("")+`</section>`;
   }else h+=`<div class="vazio"><b>Nenhum plantão com corretor neste dia</b></div>`;
   // resumo do mês
   const m=presDia.slice(0,7),g=new Map();
@@ -998,6 +1015,23 @@ function cardProximoMes(){
   <span class="pill ${ok?"ok":""}" style="${ok?"":"background:var(--badbg);color:var(--bad)"}">${ok?"Disponível":"Não disponível"}</span>
   ${ok?`${info?`<span class="note">${info}</span>`:""}<button class="btn sm" data-act="irprox" data-alvo="${alvo}">${botao} →</button>`:`<span class="note">Libera em ${abre}</span>`}
   </div></section>`;
+}
+// Situação visual de um plantão do corretor em "Meu calendário".
+function estadoPlantao(v,agora=new Date()){
+  if(tsData(v.checkin))return {cls:"st-feito",txt:"✓ Feito"};
+  if(quando(v.data,v.fim)<agora)return {cls:"st-passado",txt:"Passado"};
+  if(quando(v.data,v.ini)<=agora)return {cls:"st-agora",txt:"Agora"};
+  return {cls:"st-futuro",txt:"Seu plantão"};
+}
+// Coordenação: ajusta o check-in de um plantão (feito, com horários, ou não feito).
+function formAjusteCi(v){
+  const ci=tsData(v.checkin),co=tsData(v.checkout);
+  return `<form class="row" data-form="ajci" data-id="${v.id}" style="background:var(--soft);border-radius:10px;padding:10px 12px">
+  <label for="aj-in">Entrada</label><input type="time" id="aj-in" style="width:auto" value="${esc(dval("aj-in",ci?hm(ci):v.ini))}">
+  <label for="aj-out">Saída</label><input type="time" id="aj-out" style="width:auto" value="${esc(dval("aj-out",co?hm(co):v.fim))}">
+  <button class="btn sm" type="submit" ${ocupado?"disabled":""}>Marcar como feito</button>
+  <button class="btn sm danger" type="button" data-act="ajcinao" data-id="${v.id}" ${ocupado?"disabled":""}>Marcar como não feito</button>
+  <span class="why">A presença passa a contar com estes horários. Fica registrado como ajuste da coordenação.</span></form>`;
 }
 let logoPngCache=null;
 function logoPng(){
@@ -1160,6 +1194,8 @@ async function act(a,ds){
     case "askrem":remId=ds.uid;break;
     case "norem":remId=null;break;
     case "pdf":return baixarPdf();
+    case "ajci":ajusteCi=ajusteCi===ds.id?null:ds.id;delete drafts["aj-in"];delete drafts["aj-out"];break;
+    case "ajcinao":{const id=ds.id;ajusteCi=null;return run(()=>updateDoc(doc(fs,"vagas",id),{checkin:null,checkout:null}),"Check-in marcado como não feito.")}
     case "irprox":mes=proximoMes();mesEscolhido=true;tab=ds.alvo;confirmId=null;render();window.scrollTo({top:0,behavior:"smooth"});return;
     case "hpabrir":hpAberto=ds.g&&hpAberto!==ds.g?ds.g:null;break;
     case "hptodas":hpQuem[ds.g]=[];salvarHp();break;
@@ -1382,6 +1418,12 @@ async function submit(form){
     }
     ocupado=false;drafts["nc-lote"]=sobra.join("\n");
     lote={msg:`${ok} ${ok===1?"corretor cadastrado":"corretores cadastrados"}.${erros.length?` ${erros.length} com problema (ficaram na caixa para corrigir):`:""}`,erros};render()}
+  else if(f==="ajci"){const id=form.dataset.id,v=todas().find(x=>x.id===id),a=g("aj-in"),b=g("aj-out");
+    if(!a){toast("Informe o horário de entrada.");return}
+    if(b&&mins(b)<=mins(a)){toast("A saída precisa ser depois da entrada.");return}
+    const ts=h=>Timestamp.fromDate(quando(v.data,h)),quemAj=me.email||"coordenação";
+    await run(()=>updateDoc(doc(fs,"vagas",id),{checkin:{em:ts(a),dist:null,prec:null,manual:true,por:quemAj},checkout:b?{em:ts(b),dist:null,prec:null,manual:true,por:quemAj}:null}),"Check-in ajustado.");
+    ajusteCi=null;delete drafts["aj-in"];delete drafts["aj-out"];render()}
   else if(f==="stand"){const c=g("sd-coord").split(/[,;\s]+/).filter(Boolean).map(Number),raio=Math.max(30,parseInt(g("sd-raio"))||150),tol=Math.max(0,parseInt(g("sd-tol"))||0);
     let stand=cfg.stand||null;
     if(c.length===2&&c.every(x=>isFinite(x))&&Math.abs(c[0])<=90&&Math.abs(c[1])<=180)stand={lat:c[0],lng:c[1],raio};
