@@ -486,11 +486,18 @@ function viewEscolher(){
 }
 function viewEscala(){
   if(!isAdmin){
-    const L=libDe(me.uid,mes),dias=(L&&L.dias)||[];
-    let lista=doMes(mes).filter(v=>minha(v)||(!soMinhas&&cfg.aberta&&paraMim(v)&&dias.includes(v.data)&&v.data>=hojeStr));
-    let h=`<div class="toolbar">${mesNav()}<div class="row"><span class="note">${doMes(mes).filter(minha).length} plantões seus em ${mesMin(mes)}</span>${dias.length?`<button class="chip" data-act="sominhas" aria-pressed="${soMinhas}">Esconder horários livres</button>`:""}</div></div>`;
-    h+=`<div class="main">${calendario(lista)}<section class="list" aria-label="Agenda por data">${lista.length?agenda(lista,{}):`<div class="vazio"><b>Você não tem plantões em ${mesMin(mes)}</b><span>${dias.length?"Escolha seus horários em “Escolher horários”.":"Você ainda não foi liberado(a) para plantão neste mês."}</span></div>`}</section></div>`;
-    return h+`<p class="note">Você vê só os seus plantões e os horários livres nos seus dias.</p>`;
+    // Meu calendário: só visualização dos plantões do corretor, com detalhes.
+    const meus=doMes(mes).filter(minha),agora=new Date(),totH=meus.reduce((a,v)=>a+hrs(v),0);
+    const feitos=meus.filter(v=>quando(v.data,v.fim)<agora).length,prox=meus.find(v=>quando(v.data,v.fim)>=agora);
+    let h=`<div class="toolbar">${mesNav()}</div>
+    <div class="stats"><div class="stat"><b>${meus.length}</b><span>${meus.length===1?"plantão":"plantões"} em ${mesMin(mes)}</span></div><div class="stat"><b>${totH}h</b><span>de plantão no mês</span></div><div class="stat"><b>${prox?`${ddmm(prox.data)}`:"—"}</b><span>${prox?`próximo · ${esc(prox.ini)} às ${esc(prox.fim)}`:"sem próximos neste mês"}</span></div></div>`;
+    if(!meus.length)return h+`<div class="vazio"><b>Você não tem plantões em ${mesMin(mes)}</b><span>Para escolher horários, use a aba “Escolher horários”.</span></div>`;
+    const det=meus.map(v=>{const p=quando(v.data,v.ini)<=agora?presenca(v,agora):null;
+      return `<article class="item ${quando(v.data,v.fim)<agora?"past":""}"><div class="date"><b>${pad(dnum(v.data))}</b><span>${DOW[dowOf(v.data)]}</span></div><div class="slots">
+      <div class="slot"><span class="hr">${esc(v.ini)} às ${esc(v.fim)}</span><span class="note">${hrs(v)}h</span>${ehFeriado(v.data)?`<span class="fer">FERIADO</span>`:""}${v.local?`<span class="loc">${esc(v.local)}</span>`:""}${p?pillPres(p):""}</div>
+      <div class="note">Stand de Vendas – Shopping Jequitibá${v.obs?` · ${esc(v.obs)}`:""}${v.checkin&&tsData(v.checkin)?` · check-in ${hm(tsData(v.checkin))}`:""}${v.checkout&&tsData(v.checkout)?` · check-out ${hm(tsData(v.checkout))}`:""}</div></div></article>`}).join("");
+    h+=`<div class="main">${calendario(meus)}<section class="list" aria-label="Meus plantões do mês">${det}</section></div>`;
+    return h+`<p class="note">Aqui você só visualiza seus plantões. Para escolher, use a aba “Escolher horários”.</p>`;
   }
   const lista=doMes(mes),tot=lista,liv=tot.filter(livre).length;
   let h=`<div class="toolbar">${mesNav()}<div class="row"><span class="note">${tot.length} horários · ${liv} livres</span></div></div>`;
