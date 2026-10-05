@@ -119,6 +119,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 button.tag{cursor:pointer}
 .tag .th{font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tag .tn{font-weight:500;font-size:.68rem;overflow-wrap:anywhere;color:var(--fg)}
+.tag.verde{background:var(--ok);color:var(--accent-fg);border-left-color:var(--ok);cursor:pointer}
+.tag.verde .tn{color:var(--accent-fg);font-weight:700}
+.tag.verde:hover{filter:brightness(1.1)}
+.tag.sel{outline:3px solid var(--accent);outline-offset:1px}
 .tag.livre{background:var(--surface);border:1.5px dashed var(--ok);color:var(--ok)}
 .tag.mine{outline:2px solid var(--fg);outline-offset:-1px}
 @media (max-width:480px){.day{min-height:60px;padding:3px}.tag{font-size:.6rem;padding:1px 3px}.tag .tn{font-size:.56rem}}
@@ -263,6 +267,7 @@ const parcDe=v=>v.corretorId?(pessoa(v.corretorId)?.parceiro||""):(v.parceiro||v
 const livre=v=>!!v.aberta&&!v.corretorId;
 const minha=v=>!!me&&!isAdmin&&v.corretorId===me.uid;
 const casaNome=(nome,fixo)=>{const a=norm(nome),b=norm(fixo);return !!b&&(a===b||a.startsWith(b+" "))};
+const paraMim=v=>!!perfil&&livre(v)&&(!v.restrito||v.restrito===perfil.parceiro)&&!excluido(v);
 const excluido=v=>!!perfil&&(((v.excetoImob||[]).includes(perfil.parceiro))||((v.excetoCor||[]).includes(me&&me.uid)));
 function quemEscolhe(v){
   if(v.restrito)return "Só "+nomeParc(v.restrito);
@@ -284,7 +289,7 @@ function motivo(v){
   const L=libDe(me.uid,v.mes);
   if(!L||!(L.dias||[]).includes(v.data))return "Dia não liberado para você";
   if(v.data<hojeStr)return "Data já passou";
-  if(v.restrito&&v.restrito!==perfil.parceiro)return "Exclusivo para "+nomeParc(v.restrito);
+  if(v.restrito&&v.restrito!==perfil.parceiro)return "Horário não disponível para você";
   if(excluido(v))return "Horário não disponível para você";
   if((L.escolhidas||[]).length>=L.limite)return `Você já escolheu ${L.limite} ${L.limite===1?"plantão":"plantões"}`;
   if(minhas().some(m=>m.data===v.data&&mins(m.ini)<mins(v.fim)&&mins(v.ini)<mins(m.fim)))return "Você já tem plantão nesse horário";
@@ -343,7 +348,7 @@ function viewLogin(){
 /* ---------- partes da escala ---------- */
 function slotLine(v,o={}){
   const p=parcDe(v),nm=quem(v),isL=livre(v),mine=minha(v);
-  let who=isL?`<span class="free">Livre</span>${isAdmin&&quemEscolhe(v)?` <span class="note">${esc(quemEscolhe(v))}</span>`:v.restrito?` <span class="note">para ${esc(nomeParc(v.restrito))}</span>`:""}`
+  let who=isL?`<span class="free">${isAdmin?"Livre":"Disponível"}</span>${isAdmin&&quemEscolhe(v)?` <span class="note">${esc(quemEscolhe(v))}</span>`:""}`
     :`<span class="nm">${esc(nm||nomeParc(p)||"Reservado")}</span>${nm&&p?` <span class="note">${esc(nomeParc(p))}</span>`:""}`;
   if(mine)who=`<span class="pill ok">Seu plantão</span>`;
   else if(!isAdmin&&!isL)who=`<span class="note">Horário preenchido</span>`;
@@ -376,14 +381,14 @@ function gradeDias(cell){
   const rest=(7-((first+n)%7))%7;for(let i=0;i<rest;i++)h+=`<div class="day empty"></div>`;
   return h+`</div>`;
 }
-function calendario(lista){
+function calendario(lista,o={}){
   return `<section class="cal" aria-label="Calendário de ${nomeMes(mes)}">${gradeDias((ds,d)=>{
     const r=lista.filter(v=>v.data===ds);
     const tags=r.map(v=>{const isL=livre(v),mine=minha(v),p=parcDe(v);
-      const nm=isL?"Livre":(quem(v)||nomeParc(p)||"Reservado");
-      const clic=isAdmin?`data-act="edit" data-id="${v.id}"`:(isL&&!motivo(v)?`data-act="pickcal" data-id="${v.id}"`:"");
+      const nm=isL?(isAdmin?"Livre":"Disponível"):(mine?"Seu plantão":(quem(v)||nomeParc(p)||"Reservado"));
+      const clic=isAdmin?`data-act="edit" data-id="${v.id}"`:(isL&&!motivo(v)?`data-act="${o.escolher?"ask":"pickcal"}" data-id="${v.id}"`:"");
       const tg=clic?"button":"div";
-      return `<${tg} class="tag ${isL?"livre":""} ${mine?"mine":""}" ${clic} style="${cores(p)}" title="${esc(nm)} · ${esc(v.ini)} às ${esc(v.fim)}"><span class="th">${esc(v.ini)}–${esc(v.fim)}</span><span class="tn">${esc(nm)}</span></${tg}>`}).join("");
+      return `<${tg} class="tag ${isL?(isAdmin?"livre":"verde"):""} ${mine?"mine":""} ${confirmId===v.id?"sel":""}" ${clic} style="${cores(p)}" title="${esc(nm)} · ${esc(v.ini)} às ${esc(v.fim)}"><span class="th">${esc(v.ini)}–${esc(v.fim)}</span><span class="tn">${esc(nm)}</span></${tg}>`}).join("");
     return `<div class="day ${r.length?"has":""}"><div class="num">${pad(d)}${ehFeriado(ds)?'<span class="fer">FERIADO</span>':""}</div>${tags}</div>`;
   })}</section>`;
 }
@@ -405,19 +410,21 @@ function viewEscolher(){
   if(!cfg.aberta)return h+`<div class="vazio"><b>A escala está fechada no momento</b><span>O gestor abre a escala quando houver horários disponíveis.</span></div>`;
   const usados=(L.escolhidas||[]).length,resta=Math.max(0,L.limite-usados);
   const dias=[...L.dias].sort();
-  const nosDias=doMes(mes).filter(v=>dias.includes(v.data)&&v.data>=hojeStr),lv=nosDias.filter(livre);
+  const nosDias=doMes(mes).filter(v=>dias.includes(v.data)&&v.data>=hojeStr&&(minha(v)||paraMim(v))),lv=nosDias.filter(paraMim);
   h+=`<section class="card note-card"><h2>${resta?`Você pode escolher mais ${resta} ${resta===1?"plantão":"plantões"}`:"Você já escolheu todos os seus plantões"}</h2>
-  <p>Dias liberados para você: <b>${dias.map(ddmm).join(", ")}</b>. Limite de ${L.limite} ${L.limite===1?"plantão":"plantões"} em ${mesMin(mes)}; você já escolheu ${usados}.</p>
-  ${cfg.aviso?`<p>${esc(cfg.aviso)}</p>`:""}
-  <p class="note">Quem confirmar primeiro fica com o horário. Quando outro corretor preenche um horário, ele trava na sua tela na hora.</p></section>`;
-  if(!lv.length)h+=`<div class="vazio"><b>Os horários dos seus dias já foram preenchidos</b><span>Fale com o gestor para ver outra opção.</span></div>`;
-  h+=agenda(nosDias,{pick:1});
+  <p class="note">Toque em um horário <span class="free">verde</span> para escolher. Você já escolheu ${usados} de ${L.limite} em ${mesMin(mes)}. Quem confirmar primeiro fica com o horário.</p>
+  ${cfg.aviso?`<p>${esc(cfg.aviso)}</p>`:""}</section>`;
+  if(!lv.length)return h+`<div class="vazio"><b>Não há horários disponíveis para você agora</b><span>Fale com o gestor para ver outra opção.</span></div>`;
+  const cv=confirmId&&vagas.get(confirmId)?{id:confirmId,...vagas.get(confirmId)}:null;
+  if(cv)h+=`<div class="confirm" style="flex-basis:auto"><span>Confirmar plantão em <b>${DOW[dowOf(cv.data)].toLowerCase()}, ${ddmm(cv.data)}</b>, das ${esc(cv.ini)} às ${esc(cv.fim)}?</span><button class="btn sm" data-act="claim" data-id="${cv.id}" ${ocupado?"disabled":""}>Confirmar</button><button class="btn sm quiet" data-act="cancel">Cancelar</button></div>`;
+  h+=calendario(nosDias,{escolher:true});
+  h+=`<section class="card dobra-card" data-dobra="esc-lista"><h2>Ver em lista</h2><div class="list">${agenda(nosDias,{pick:1})}</div></section>`;
   return h;
 }
 function viewEscala(){
   if(!isAdmin){
     const L=libDe(me.uid,mes),dias=(L&&L.dias)||[];
-    let lista=doMes(mes).filter(v=>minha(v)||(!soMinhas&&cfg.aberta&&livre(v)&&dias.includes(v.data)&&v.data>=hojeStr));
+    let lista=doMes(mes).filter(v=>minha(v)||(!soMinhas&&cfg.aberta&&paraMim(v)&&dias.includes(v.data)&&v.data>=hojeStr));
     let h=`<div class="toolbar">${mesNav()}<div class="row"><span class="note">${doMes(mes).filter(minha).length} plantões seus em ${mesMin(mes)}</span>${dias.length?`<button class="chip" data-act="sominhas" aria-pressed="${soMinhas}">Esconder horários livres</button>`:""}</div></div>`;
     h+=`<div class="main">${calendario(lista)}<section class="list" aria-label="Agenda por data">${lista.length?agenda(lista,{}):`<div class="vazio"><b>Você não tem plantões em ${mesMin(mes)}</b><span>${dias.length?"Escolha seus horários em “Escolher horários”.":"Você ainda não foi liberado(a) para plantão neste mês."}</span></div>`}</section></div>`;
     return h+`<p class="note">Você vê só os seus plantões e os horários livres nos seus dias.</p>`;
@@ -895,7 +902,7 @@ async function act(a,ds){
     case "menu":menuAberto=!menuAberto;break;
     case "tab":tab=ds.v;confirmId=desistirId=editId=libEdit=null;break;
     case "mes":mudaMes(+ds.d);break;
-    case "ask":confirmId=ds.id;break;
+    case "ask":confirmId=ds.id;render();setTimeout(()=>document.querySelector(".confirm")?.scrollIntoView({block:"center",behavior:"smooth"}),50);return;
     case "pickcal":tab="escolher";confirmId=ds.id;render();setTimeout(()=>document.getElementById("s-"+ds.id)?.scrollIntoView({block:"center"}),60);return;
     case "cancel":confirmId=desistirId=null;break;
     case "askrel":desistirId=ds.id;break;
