@@ -120,8 +120,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .boasvindas .bv-nome,.boasvindas .local,.boasvindas .divisor{animation:bvEntra .8s .3s ease-out both}
 @keyframes bvEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.simbolo-bv,.boasvindas *{animation:none!important}}
-.proxmes{border:2px dashed var(--line);margin-top:8px}
-.proxmes.on{border:2px solid var(--ok);background:var(--okbg)}
+.proxmes{border:1px dashed var(--line);margin-top:8px;padding:12px 16px}
+.pm-linha{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap}
+.pm-txt{display:flex;flex-direction:column;line-height:1.15;margin-right:auto}
+.pm-txt b{font-family:var(--display);font-size:1.1rem}
+.proxmes.on{border:1px solid var(--ok);background:var(--okbg)}
 .proxmes.on h2,.proxmes.on p{color:var(--fg)}
 .sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
 .login-head p{color:var(--sky)}
@@ -977,28 +980,17 @@ const DIA_LIBERACAO=24;
 const proximoMes=()=>{const dt=new Date(+hojeStr.slice(0,4),+hojeStr.slice(5,7),1);return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`};
 function cardProximoMes(){
   const pm=proximoMes(),nome=MESES[+pm.slice(5,7)-1],abre=`${pad(DIA_LIBERACAO)}/${hojeStr.slice(5,7)}`;
-  let ok=false,texto="",botao="",alvo="";
-  if(isGestor){
-    ok=diasImob(gImob,pm).length>0;alvo="distribuir";
-    texto=ok?`Os dias de ${nome.toLowerCase()} já foram liberados. Defina os corretores de cada horário.`:`As datas de ${nome.toLowerCase()} são liberadas pela coordenação no dia ${abre}.`;
-    botao="Distribuir horários de "+nome.toLowerCase();
-  }else if(perfil&&distribui.has(perfil.parceiro)){
-    const n=minhas().filter(v=>v.mes===pm).length;ok=n>0;alvo="escala";
-    texto=ok?`O gestor da ${esc(nomeParc(perfil.parceiro))} já definiu ${n} ${n===1?"plantão seu":"plantões seus"} em ${nome.toLowerCase()}.`:`Seus plantões de ${nome.toLowerCase()} são definidos pelo gestor da ${esc(nomeParc(perfil.parceiro))} depois do dia ${abre}.`;
-    botao="Ver meus plantões de "+nome.toLowerCase();
-  }else if(perfil){
-    const L=libDe(me.uid,pm);ok=ativoNoMes(perfil,pm)&&!!(L&&(L.dias||[]).length)&&cfg.aberta;alvo="escolher";
-    const resta=L?Math.max(0,L.limite-(L.escolhidas||[]).length):0;
-    texto=ok?(resta?`Os horários de ${nome.toLowerCase()} já estão disponíveis para você. Escolha logo: quem confirma primeiro fica com o horário.`:`Você já escolheu todos os seus plantões de ${nome.toLowerCase()}.`)
-      :`As datas de ${nome.toLowerCase()} são liberadas no dia ${abre}. Fique atento(a) e volte aqui para escolher seus horários.`;
-    botao=resta||!ok?"Escolher meus horários de "+nome.toLowerCase():"Ver meus plantões de "+nome.toLowerCase();
-    if(ok&&!resta)alvo="escala";
-  }else return "";
-  return `<section class="card proxmes ${ok?"on":""}" aria-live="polite">
-  <div class="toolbar"><div><span class="eyebrow">Disponibilidade do próximo mês</span><h2 style="margin-top:2px">${nome} ${pm.slice(0,4)}</h2></div>
-  <span class="pill ${ok?"ok":""}" style="${ok?"":"background:var(--badbg);color:var(--bad)"}">${ok?"Disponível":"Não disponível"}</span></div>
-  <p>${texto}</p>
-  ${ok?`<button class="btn lg" data-act="irprox" data-alvo="${alvo}">${botao}</button>`:""}</section>`;
+  let ok=false,info="",botao="Escolher horários",alvo="escolher";
+  if(isGestor){ok=diasImob(gImob,pm).length>0;alvo="distribuir";botao="Distribuir horários"}
+  else if(perfil&&distribui.has(perfil.parceiro)){const n=minhas().filter(v=>v.mes===pm).length;ok=n>0;alvo="escala";botao="Ver plantões";info=ok?`${n} definido${n===1?"":"s"}`:""}
+  else if(perfil){const L=libDe(me.uid,pm);ok=ativoNoMes(perfil,pm)&&!!(L&&(L.dias||[]).length)&&cfg.aberta;
+    if(ok&&L.limite-(L.escolhidas||[]).length<=0){alvo="escala";botao="Ver plantões";info="já escolhidos"}}
+  else return "";
+  return `<section class="card proxmes ${ok?"on":""}" aria-live="polite"><div class="pm-linha">
+  <div class="pm-txt"><span class="eyebrow">Próximo mês</span><b>${nome}</b></div>
+  <span class="pill ${ok?"ok":""}" style="${ok?"":"background:var(--badbg);color:var(--bad)"}">${ok?"Disponível":"Não disponível"}</span>
+  ${ok?`${info?`<span class="note">${info}</span>`:""}<button class="btn sm" data-act="irprox" data-alvo="${alvo}">${botao} →</button>`:`<span class="note">Libera em ${abre}</span>`}
+  </div></section>`;
 }
 let logoPngCache=null;
 function logoPng(){
