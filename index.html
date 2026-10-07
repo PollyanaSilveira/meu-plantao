@@ -1286,9 +1286,11 @@ function render(){
     <nav class="tabs" role="tablist" aria-label="Seções">${T.map(([k,l,n])=>`<button class="tab" role="tab" data-act="tab" data-v="${k}" aria-selected="${tab===k}">${ICONES[k]||""}${l}${n!==undefined?`<span class="n">${n}</span>`:""}</button>`).join("")}</nav>
     <main class="list">${corpo}</main></div>`;
   }
-  document.body.classList.toggle("modo-login",fase!=="ok");
-  document.body.classList.toggle("corretor",fase==="ok"&&!isAdmin&&!isGestor);
-  document.body.classList.toggle("noturno",fase==="ok"&&!isAdmin&&!isGestor&&noturno);
+  // Entrada (login e boas-vindas) tem sempre o visual próprio, sem herdar claro/noturno do corretor.
+  const naEntrada=fase!=="ok"||(splashAte&&Date.now()<splashAte&&fase!=="semperfil"&&!loginErr);
+  document.body.classList.toggle("modo-login",naEntrada);
+  document.body.classList.toggle("corretor",!naEntrada&&!isAdmin&&!isGestor);
+  document.body.classList.toggle("noturno",!naEntrada&&!isAdmin&&!isGestor&&noturno);
   root.innerHTML=h;
   root.querySelectorAll("[data-dobra]").forEach(el=>{if(!abertos.has(el.dataset.dobra))el.classList.add("fechado")});
   if(fid){const n=document.getElementById(fid);if(n){n.focus();try{if(ss!=null)n.setSelectionRange(ss,se)}catch(e){}}}
