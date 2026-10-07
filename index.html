@@ -835,15 +835,20 @@ function grupoDe(d){const gs=grupos(),w=dowOf(d);if(ehFeriado(d)){const f=gs.fin
 function turnosPadrao(d){const g=grupoDe(d);return g?g.turnos:[]}
 function mesesAPartir(m,n){const out=[];for(let i=0;i<n;i++){const dt=new Date(+m.slice(0,4),+m.slice(5,7)-1+i,1);out.push(`${dt.getFullYear()}-${pad(dt.getMonth()+1)}`)}return out}
 function grupoDia(d){const g=grupoDe(d);return g?g.id:""}
-const quemDe=id=>(grupos().find(g=>g.id===id)?.quem||[]).filter(k=>parc(k));
+const NENHUMA="-";
+const quemBruto=id=>grupos().find(g=>g.id===id)?.quem||[];
+const nenhumaDe=id=>quemBruto(id).includes(NENHUMA);
+const quemDe=id=>quemBruto(id).filter(k=>parc(k));
 // Quem pode escolher: nenhuma ou todas marcadas = todas; uma = só ela; várias = todas, exceto as não marcadas.
 function regraGrupo(id){
+  if(nenhumaDe(id))return {restrito:"",excetoImob:imobs.map(x=>x.k)};
   const sel=quemDe(id);
   if(!sel.length||sel.length===imobs.length)return {restrito:"",excetoImob:[]};
   if(sel.length===1)return {restrito:sel[0],excetoImob:[]};
   return {restrito:"",excetoImob:imobs.map(x=>x.k).filter(k=>!sel.includes(k))};
 }
 function textoGrupo(id){
+  if(nenhumaDe(id))return "Nenhuma selecionada";
   const sel=quemDe(id);
   if(!sel.length||sel.length===imobs.length)return "Todas as imobiliárias";
   if(sel.length>imobs.length/2)return "Todas, exceto "+imobs.filter(x=>!sel.includes(x.k)).map(x=>x.nome).join(", ");
@@ -851,7 +856,7 @@ function textoGrupo(id){
 }
 const mesmaRegra=(v,r)=>(v.restrito||"")===r.restrito&&[...(v.excetoImob||[])].sort().join()===[...r.excetoImob].sort().join();
 function seletorGrupo(g){
-  const lst=quemDe(g),todas=!lst.length||lst.length===imobs.length,sel=new Set(todas?imobs.map(x=>x.k):lst);
+  const nenhuma=nenhumaDe(g),lst=quemDe(g),todas=!nenhuma&&(!lst.length||lst.length===imobs.length),sel=new Set(nenhuma?[]:todas?imobs.map(x=>x.k):lst);
   return `<div class="multi"><button type="button" class="multi-btn" data-act="hpabrir" data-g="${g}" aria-expanded="${hpAberto===g}">${esc(textoGrupo(g))}</button>
   ${hpAberto===g?`<div class="multi-pop" role="group" aria-label="Quem pode escolher">
     <label class="check"><input type="checkbox" data-act="hptodas" data-g="${g}" ${todas?"checked":""}> <b>Todas as imobiliárias</b></label>
@@ -1429,10 +1434,9 @@ async function act(a,ds){
     case "ajcinao":{const id=ds.id;ajusteCi=null;return run(()=>updateDoc(doc(fs,"vagas",id),{checkin:null,checkout:null}),"Check-in marcado como não feito.")}
     case "irprox":mes=proximoMes();mesEscolhido=true;tab=ds.alvo;confirmId=null;render();window.scrollTo({top:0,behavior:"smooth"});return;
     case "hpabrir":hpAberto=ds.g&&hpAberto!==ds.g?ds.g:null;break;
-    case "hptodas":return definirQuem(ds.g,[]);
-    case "hpq":{const atual=quemDe(ds.g),set=new Set(atual.length?atual:imobs.map(x=>x.k));set.has(ds.k)?set.delete(ds.k):set.add(ds.k);
-      if(!set.size){toast("Marque pelo menos uma imobiliária.");break}
-      return definirQuem(ds.g,set.size===imobs.length?[]:[...set])}
+    case "hptodas":{const nen=nenhumaDe(ds.g),l=quemDe(ds.g),todas=!nen&&(!l.length||l.length===imobs.length);return definirQuem(ds.g,todas?[NENHUMA]:[])}
+    case "hpq":{const nen=nenhumaDe(ds.g),atual=quemDe(ds.g),set=new Set(nen?[]:(atual.length?atual:imobs.map(x=>x.k)));set.has(ds.k)?set.delete(ds.k):set.add(ds.k);
+      return definirQuem(ds.g,!set.size?[NENHUMA]:set.size===imobs.length?[]:[...set])}
     case "padedit":padEdit=JSON.parse(JSON.stringify(grupos()));hpAberto=null;break;
     case "pecancelar":padEdit=null;hpAberto=null;break;
     case "pedia":{const g=padEdit[+ds.i],w=+ds.w;g.dias=g.dias.includes(w)?g.dias.filter(x=>x!==w):[...g.dias,w];break}
