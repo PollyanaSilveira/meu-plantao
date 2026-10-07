@@ -230,6 +230,10 @@ body.corretor .orient ul{font-size:.9rem;line-height:1.55}
 .cor-head{gap:8px 14px}
 .cor-head .acts{display:flex;gap:6px;flex-wrap:wrap}
 .grupo-imob{padding:12px 16px}
+.confirma-padrao{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--warnbg);border:1px solid rgba(154,91,0,.25);border-radius:10px;padding:12px 14px}
+.confirma-padrao>div{display:grid;gap:2px}
+.confirma-padrao span{font-size:.85rem;color:var(--muted)}
+.ok-linha{color:var(--ok);font-weight:600;font-size:.9rem}
 .sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
 .login-head p{color:var(--sky)}
 .login .link{color:var(--sky)}
@@ -733,7 +737,9 @@ function viewHorarios(){
   <div class="field"><label for="hp-meses">Gerar para</label><select id="hp-meses">${mesesAPartir(hojeStr.slice(0,7),13).map(m=>`<option value="${m}" ${mesGerar()===m?"selected":""}>${nomeMes(m)}</option>`).join("")}</select></div>
   <div class="field wide"><div class="row"><button class="btn" data-act="padrao" ${!plano.length||ocupado?"disabled":""}>Gerar ${plano.length} ${plano.length===1?"horário":"horários"}</button>
   <span class="why">${plano.length?`${mesesTxt}. Horários que já existem e dias que já passaram são ignorados. Feriados nacionais já entram automaticamente; feriados locais você cadastra em Ajustes.`:`Os horários padrão de ${mesesTxt} já estão criados.`}</span></div></div>
-  ${ajuste.length?`<div class="field wide"><div class="row"><button class="btn sec" data-act="ajpadrao" ${ocupado?"disabled":""}>Aplicar a ${ajuste.length} ${ajuste.length===1?"horário livre já criado":"horários livres já criados"}</button><span class="why">Muda “quem pode escolher” nos horários livres de ${mesesTxt} que estão diferentes da tabela. Horários já escolhidos não mudam.</span></div></div>`:""}</div>`}</div></section>`;
+  ${(()=>{const livresMes=todas().filter(v=>v.mes===mesGerar()&&v.data>=hojeStr&&livre(v)).length;
+    if(ajuste.length)return `<div class="field wide"><div class="confirma-padrao"><div><b>${ajuste.length} ${ajuste.length===1?"horário livre":"horários livres"} de ${mesesTxt} ainda ${ajuste.length===1?"segue":"seguem"} a regra antiga.</b><span>Confirme para aplicar a regra da tabela acima. Horários já escolhidos não mudam.</span></div><button class="btn" data-act="ajpadrao" ${ocupado?"disabled":""}>Confirmar e aplicar</button></div></div>`;
+    return livresMes?`<div class="field wide"><span class="ok-linha">✓ Os horários livres de ${mesesTxt} já seguem a regra da tabela.</span></div>`:"";})()}</div>`}</div></section>`;
   if(!vagas.size)h+=`<section class="card note-card"><h2>Importar a escala de outubro</h2><p>Carrega os 69 plantões de outubro/2026 que já estavam montados.</p><div class="row"><button class="btn" data-act="importar" ${ocupado?"disabled":""}>Importar outubro/2026</button></div></section>`;
   const turnos=[...TURNOS.map(t=>t.join("-")),...turnosExtra.filter(t=>!TURNOS.some(x=>x.join("-")===t))];
   const total=selDias.size*selTurnos.size;
@@ -854,6 +860,7 @@ function textoGrupo(id){
   if(sel.length>imobs.length/2)return "Todas, exceto "+imobs.filter(x=>!sel.includes(x.k)).map(x=>x.nome).join(", ");
   return "Só "+sel.map(nomeParc).join(", ");
 }
+const textoGrupoDe=(gs,id)=>{const g=gs.find(x=>x.id===id),q=(g?.quem||[]);if(q.includes(NENHUMA))return "nenhuma imobiliária";const l=q.filter(k=>parc(k));return !l.length||l.length===imobs.length?"todas as imobiliárias":l.map(nomeParc).join(", ")};
 const mesmaRegra=(v,r)=>(v.restrito||"")===r.restrito&&[...(v.excetoImob||[])].sort().join()===[...r.excetoImob].sort().join();
 function seletorGrupo(g){
   const nenhuma=nenhumaDe(g),lst=quemDe(g),todas=!nenhuma&&(!lst.length||lst.length===imobs.length),sel=new Set(nenhuma?[]:todas?imobs.map(x=>x.k):lst);
@@ -869,7 +876,7 @@ function seletorGrupo(g){
 async function definirQuem(id,arr){
   if(padEdit){const g=padEdit.find(x=>x.id===id);if(g)g.quem=arr;render();return}
   const novo=grupos().map(g=>g.id===id?{...g,quem:arr}:g);
-  await run(()=>updateDoc(doc(fs,"config","geral"),{padrao:paraSalvar(novo)}));
+  await run(()=>updateDoc(doc(fs,"config","geral"),{padrao:paraSalvar(novo)}),"Regra salva: "+textoGrupoDe(novo,id)+".");
 }
 // Mês escolhido em "Gerar para" (padrão: o mês que está nas setas).
 const mesGerar=()=>hpMeses&&hpMeses>=hojeStr.slice(0,7)?hpMeses:(mes>=hojeStr.slice(0,7)?mes:hojeStr.slice(0,7));
@@ -893,7 +900,7 @@ function ajustePadrao(){
 // Tabela do padrão: visualização ou edição.
 function tabelaPadrao(){
   const gs=grupos();
-  if(!padEdit)return `<div class="tablewrap"><table><thead><tr><th>Dias</th><th>Horários</th><th>Quem pode escolher</th></tr></thead><tbody>
+  if(!padEdit)return `<p class="why" style="margin:0">Ao marcar “quem pode escolher”, a regra é salva na hora.</p><div class="tablewrap"><table><thead><tr><th>Dias</th><th>Horários</th><th>Quem pode escolher</th></tr></thead><tbody>
     ${gs.map(g=>`<tr><td>${esc(nomeGrupo(g))}</td><td class="n">${esc(turnosTxt(g))}</td><td>${seletorGrupo(g.id)}</td></tr>`).join("")}</tbody></table></div>
     <div class="row"><button class="btn sm sec" data-act="padedit">Editar padrão (dias e horários)</button><span class="why">Os horários já criados não mudam. Para uma ressalva num dia só, use “Criar horários avulsos” ou edite o horário na Escala.</span></div>`;
   const usados={};gs.forEach(g=>g.dias.forEach(w=>{usados[w]=(usados[w]||0)+1}));
