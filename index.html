@@ -868,7 +868,7 @@ function posicaoAtual(){
 function presenca(v,agora=new Date()){
   const ini=quando(v.data,v.ini),fim=quando(v.data,v.fim),ci=tsData(v.checkin),co=tsData(v.checkout);
   if(!v.corretorId&&!v.nomeFixo)return {cod:"vazio",txt:livre(v)?"Livre":"Sem corretor",cor:"muted"};
-  if(!v.corretorId)return {cod:"semapp",txt:"Sem acesso ao app",cor:"muted"};
+  if(!v.corretorId&&!ci)return {cod:"semapp",txt:"Sem acesso ao app",cor:"muted"};
   if(ci){
     const atraso=Math.round((ci-ini)/60000),tarde=atraso>tolerancia();
     if(co)return {cod:"ok",txt:`Concluído · ${durTxt((co-ci)/60000)}${tarde?` · atrasou ${atraso} min`:""}`,cor:tarde?"warn":"ok",ci,co,atraso,min:(co-ci)/60000};
@@ -928,7 +928,7 @@ function viewCheckinGestor(){
       const res=[["em","em plantão"],["ok","concluídos"],["atrasado","não chegou"],["falta","faltas"],["semco","sem check-out"],["aguarda","aguardando"]].map(([c,l])=>{const n=g.filter(x=>x.p.cod===c).length;return n?`${n} ${l}`:""}).filter(Boolean).join(" · ");
       const alerta=g.some(x=>x.p.cod==="falta"||x.p.cod==="atrasado");
       return `<div class="stack grupo-imob dobra-card" data-dobra="ci-${esc(k)}" style="gap:8px"><div class="row" style="${cores(k)}"><span class="sw"></span><b>${esc(nome)}</b><span class="note">${g.length} ${g.length===1?"plantão":"plantões"}${res?" · "+res:""}</span>${alerta?`<span class="pill" style="background:var(--badbg);color:var(--bad)">Atenção</span>`:""}</div>
-      <div class="tablewrap"><table><thead><tr><th>Horário</th><th>Corretor</th><th>Check-in</th><th>Check-out</th><th>Situação</th>${isAdmin?"<th></th>":""}</tr></thead><tbody>${g.map(({v,p})=>`<tr><td class="n">${esc(v.ini)}–${esc(v.fim)}</td><td>${esc(quem(v)||"—")}</td><td class="n">${hm(p.ci)}${v.checkin&&v.checkin.manual?` <span class="why">ajustado</span>`:v.checkin&&v.checkin.dist!=null?` <span class="why">${v.checkin.dist} m</span>`:""}</td><td class="n">${hm(tsData(v.checkout))}</td><td>${pillPres(p)}</td>${isAdmin&&v.corretorId?`<td><button class="btn sm quiet" data-act="ajci" data-id="${v.id}">${ajusteCi===v.id?"Fechar":"Ajustar"}</button></td>`:isAdmin?"<td></td>":""}</tr>${isAdmin&&ajusteCi===v.id?`<tr><td colspan="6">${formAjusteCi(v)}</td></tr>`:""}`).join("")}</tbody></table></div></div>`}).join("")+`</section>`;
+      <div class="tablewrap"><table><thead><tr><th>Horário</th><th>Corretor</th><th>Check-in</th><th>Check-out</th><th>Situação</th>${isAdmin?"<th></th>":""}</tr></thead><tbody>${g.map(({v,p})=>`<tr><td class="n">${esc(v.ini)}–${esc(v.fim)}</td><td>${esc(quem(v)||"—")}</td><td class="n">${hm(p.ci)}${v.checkin&&v.checkin.manual?` <span class="why">ajustado</span>`:v.checkin&&v.checkin.dist!=null?` <span class="why">${v.checkin.dist} m</span>`:""}</td><td class="n">${hm(tsData(v.checkout))}</td><td>${pillPres(p)}</td>${isAdmin&&(v.corretorId||v.nomeFixo)?`<td><button class="btn sm quiet" data-act="ajci" data-id="${v.id}">${ajusteCi===v.id?"Fechar":"Ajustar"}</button></td>`:isAdmin?"<td></td>":""}</tr>${isAdmin&&ajusteCi===v.id?`<tr><td colspan="6">${formAjusteCi(v)}</td></tr>`:""}`).join("")}</tbody></table></div></div>`}).join("")+`</section>`;
   }else h+=`<div class="vazio"><b>Nenhum plantão com corretor neste dia</b></div>`;
   // resumo do mês
   const m=presDia.slice(0,7),g=new Map();
