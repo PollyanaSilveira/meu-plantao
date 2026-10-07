@@ -132,6 +132,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .orient h3{font-family:var(--display);font-size:.92rem;margin:8px 0 0;color:var(--fg)}
 .orient ul{margin:0;padding-left:18px;display:grid;gap:3px;color:var(--muted);font-size:.9rem}
 .orient .fecho{margin:10px 0 0;font-style:italic;color:var(--fg);font-size:.9rem}
+.liberar p{max-width:none}
+.passo{display:grid;grid-template-columns:170px minmax(0,1fr);gap:8px 16px;align-items:start;padding:12px 0;border-top:1px solid var(--line)}
+.passo-t{display:flex;align-items:center;gap:8px;font-weight:700}
+.passo-n{width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-size:.75rem;flex:none}
+.passo-c{min-width:0;display:grid;gap:6px}
+.linha-imob{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.linha-imob .sw{background:var(--k)}
+.avisos{display:grid;gap:4px;font-size:.85rem;color:var(--muted);background:var(--soft);border-radius:8px;padding:8px 12px}
+@media (max-width:640px){.passo{grid-template-columns:1fr}}
 .sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
 .login-head p{color:var(--sky)}
 .login .link{color:var(--sky)}
@@ -279,7 +288,7 @@ const configurado=!String(firebaseConfig.apiKey||"").includes("COLE");
 let auth,fs,auth2;
 if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.languageCode="pt";fs=getFirestore(app);auth2=getAuth(initializeApp(firebaseConfig,"cadastro"))}
 
-let ajusteCi=null,libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,splashAte=0,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
+let lbCorAberto=new Set(),ajusteCi=null,libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,splashAte=0,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
 let loginModo="escolha",loginErr="",gestorNovo=false,lote=null;
@@ -559,27 +568,24 @@ function viewLiberar(){
 
   if(!diasComVaga.length)h+=`<div class="card note-card warn"><p>Ainda não há horários em ${nomeMes(mes)}. Crie os horários na aba “Horários” antes de liberar os dias.</p></div>`;
   if(lista.length){
-    const qtd=alvoLote().length,diasB=diasLote();
-    const comCor=imobs;
-    h+=`<section class="card dobra-card" data-dobra="lbgrupo"><h2>Liberar em grupo</h2><p class="note">1) Marque as imobiliárias. 2) Na lista de corretores, deixe marcados só os que vão estar disponíveis. 3) Escolha os dias da semana e o limite.</p>
-    <div class="lbl">1. Imobiliárias</div>
-    <div class="row">${comCor.map(x=>{const n=lista.filter(({p})=>p.parceiro===x.k).length;return `<button class="chip" style="${cores(x.k)}${n?"":";opacity:.55"}" data-act="lbsel" data-k="${esc(x.k)}" aria-pressed="${lbSel.has(x.k)}" title="${n?`${n} corretores ativos`:"Sem corretores ativos neste mês"}"><span class="sw"></span>${esc(x.nome)} <span class="why">${n}</span></button>`}).join("")}
-    ${comCor.length>1?`<button class="link" data-act="lbselall">${comCor.every(x=>lbSel.has(x.k))?"Desmarcar todas":"Marcar todas"}</button>`:""}</div>
-    <div class="lbl">2. Corretores disponíveis</div>
-    ${lbSel.size?`<div class="stack" style="gap:10px">${comCor.filter(x=>lbSel.has(x.k)).map(x=>{const cs=lista.filter(({p})=>p.parceiro===x.k),marc=cs.filter(({uid})=>!lbFora.has(uid)).length;
-      if(!cs.length)return `<div class="stack" style="gap:6px;background:var(--soft);border-radius:10px;padding:10px 12px"><div class="row" style="${cores(x.k)}"><span class="sw"></span><b>${esc(x.nome)}</b><span class="note">Nenhum corretor ativo em ${mesMin(mes)}. Cadastre ou ative os corretores dela na aba “Corretores”.</span></div></div>`;
-      return `<div class="stack" style="gap:6px;background:var(--soft);border-radius:10px;padding:10px 12px"><div class="row" style="${cores(x.k)}"><span class="sw"></span><b>${esc(x.nome)}</b><span class="note">${marc} de ${cs.length} disponíveis</span><button class="link" data-act="lbtodos" data-k="${esc(x.k)}">${marc===cs.length?"Desmarcar todos":"Marcar todos"}</button></div>
-      <div class="row">${cs.map(({uid,p})=>`<label class="check" style="font-weight:600;min-width:12ch"><input type="checkbox" data-act="lbcor" data-uid="${uid}" ${lbFora.has(uid)?"":"checked"}> ${esc(p.nome)}</label>`).join("")}</div></div>`}).join("")}</div>`
-      :`<p class="note" style="margin:0">Marque uma imobiliária acima para ver os corretores dela.</p>`}
-    <div class="lbl">3. Dias e limite</div>
-    <div class="row"><span class="note">Dias da semana:</span>${[1,2,3,4,5,6,0].map(w=>`<button class="chip" data-act="lbdow" data-w="${w}" aria-pressed="${lbDow.has(w)}">${DOW[w]}</button>`).join("")}</div>
-    <div class="row"><label for="lb-blim">Cada corretor pode escolher até</label><input type="number" id="lb-blim" min="1" max="31" style="width:6em" value="${esc(dval("lb-blim","4"))}"><span class="note">plantões em ${mesMin(mes)}</span></div>
-    <label class="check"><input type="checkbox" id="lb-excl" ${lbExcl?"checked":""}> Travar esses horários só para os corretores marcados (os outros não conseguem escolher)</label>
-    ${[...lbSel].filter(k=>distribui.has(k)).map(k=>{const dd=diasImob(k,mes);return `<p class="note" style="margin:0"><b>${esc(nomeParc(k))}</b>: o gestor dela distribui os horários e só pode distribuir nos dias liberados aqui. ${dd.length?`Já liberados em ${mesMin(mes)}: ${dd.map(ddmm).join(", ")}. <button class="link" data-act="libimobdel" data-k="${esc(k)}">Remover dias da ${esc(nomeParc(k))}</button>`:`Nenhum dia liberado ainda em ${mesMin(mes)}.`}</p>`}).join("")}
-    <div class="row"><button class="btn" data-act="lote" ${!diasB.length||(!qtd&&![...lbSel].some(k=>distribui.has(k)))||ocupado?"disabled":""}>Liberar ${diasB.length} ${diasB.length===1?"dia":"dias"}${qtd?` para ${qtd} ${qtd===1?"corretor":"corretores"}`:""}</button>
-    <span class="why">${!lbSel.size?"Marque ao menos uma imobiliária.":!qtd&&![...lbSel].some(k=>distribui.has(k))?"Nenhum corretor marcado.":diasB.length?diasB.map(ddmm).join(", "):lbDow.size?`Não há horários nesses dias da semana em ${mesMin(mes)}. Crie os horários na aba “Horários”.`:"Escolha os dias da semana."}</span></div>
-    ${(()=>{const f=fechadosLote();if(!f.length||!lbSel.size)return "";const donos=[...new Set(f.map(v=>v.restrito?nomeParc(v.restrito):"outras imobiliárias"))].filter(Boolean);
-      return `<p class="note" style="margin:0">${f.length} ${f.length===1?"horário desses dias estava reservado":"horários desses dias estavam reservados"} para ${esc(donos.join(", "))}. Ao liberar, ${esc([...lbSel].map(nomeParc).join(", "))} também ${lbSel.size===1?"poderá":"poderão"} escolher, e quem já tinha acesso continua tendo.</p>`})()}</section>`;
+    const qtd=alvoLote().length,diasB=diasLote(),dist=[...lbSel].filter(k=>distribui.has(k));
+    const passo=(n,t,c)=>`<div class="passo"><div class="passo-t"><span class="passo-n">${n}</span>${t}</div><div class="passo-c">${c}</div></div>`;
+    const p1=`<div class="row">${imobs.map(x=>{const n=lista.filter(({p})=>p.parceiro===x.k).length;return `<button class="chip" style="${cores(x.k)}${n?"":";opacity:.5"}" data-act="lbsel" data-k="${esc(x.k)}" aria-pressed="${lbSel.has(x.k)}"><span class="sw"></span>${esc(x.nome)}</button>`}).join("")}<button class="link" data-act="lbselall">${imobs.every(x=>lbSel.has(x.k))?"Nenhuma":"Todas"}</button></div>`;
+    const p2=lbSel.size?imobs.filter(x=>lbSel.has(x.k)).map(x=>{const cs=lista.filter(({p})=>p.parceiro===x.k),marc=cs.filter(({uid})=>!lbFora.has(uid)).length,ab=lbCorAberto.has(x.k);
+      if(!cs.length)return `<div class="linha-imob"><span class="sw" style="${cores(x.k)}"></span><b>${esc(x.nome)}</b><span class="note">${distribui.has(x.k)?"o gestor distribui":"sem corretores ativos"}</span></div>`;
+      return `<div class="linha-imob"><span class="sw" style="${cores(x.k)}"></span><b>${esc(x.nome)}</b><span class="note">${marc} de ${cs.length}</span><button class="link" data-act="lbcorabrir" data-k="${esc(x.k)}">${ab?"fechar":"alterar"}</button></div>
+      ${ab?`<div class="row" style="padding:2px 0 8px 18px">${cs.map(({uid,p})=>`<label class="check" style="font-weight:600;min-width:12ch"><input type="checkbox" data-act="lbcor" data-uid="${uid}" ${lbFora.has(uid)?"":"checked"}> ${esc(p.nome)}</label>`).join("")}<button class="link" data-act="lbtodos" data-k="${esc(x.k)}">${marc===cs.length?"desmarcar todos":"marcar todos"}</button></div>`:""}`}).join(""):`<span class="note">Escolha as imobiliárias no passo 1.</span>`;
+    const p3=`<div class="row">${[1,2,3,4,5,6,0].map(w=>`<button class="chip" data-act="lbdow" data-w="${w}" aria-pressed="${lbDow.has(w)}">${DOW[w]}</button>`).join("")}</div>`;
+    const p4=`<div class="row"><span>Até</span><input type="number" id="lb-blim" min="1" max="31" style="width:5em" value="${esc(dval("lb-blim","4"))}" aria-label="Limite de plantões por corretor"><span>plantões por corretor</span></div>`;
+    const f=fechadosLote();
+    const avisos=[...dist.map(k=>{const dd=diasImob(k,mes);return `${esc(nomeParc(k))}: o gestor distribui${dd.length?` · ${dd.length} dias já liberados <button class="link" data-act="libimobdel" data-k="${esc(k)}">remover</button>`:""}`}),
+      ...(f.length&&lbSel.size?[`Inclui ${f.length} ${f.length===1?"horário reservado":"horários reservados"} para outras imobiliárias; quem já tinha acesso continua tendo.`]:[]),
+      ...(lbDow.size&&!diasB.length?[`Não há horários nesses dias em ${mesMin(mes)}. Crie em “1. Horários”.`]:[])];
+    h+=`<section class="card dobra-card liberar" data-dobra="lbgrupo"><h2>Liberar em grupo</h2>
+    ${passo(1,"Imobiliárias",p1)}${passo(2,"Corretores",p2)}${passo(3,"Dias da semana",p3)}${passo(4,"Limite",p4)}
+    <label class="check" style="font-weight:600"><input type="checkbox" id="lb-excl" ${lbExcl?"checked":""}> Só os marcados podem escolher esses horários</label>
+    ${avisos.length?`<div class="avisos">${avisos.map(a=>`<span>${a}</span>`).join("")}</div>`:""}
+    <div class="row"><button class="btn" data-act="lote" ${!diasB.length||(!qtd&&!dist.length)||ocupado?"disabled":""}>Liberar ${diasB.length} ${diasB.length===1?"dia":"dias"}${qtd?` · ${qtd} ${qtd===1?"corretor":"corretores"}`:""}</button></div></section>`;
   }
   if(!lista.length)return h+`<div class="vazio"><b>Nenhum corretor cadastrado ainda</b><span>Cadastre os corretores na aba “Corretores”. Depois, libere os dias de cada um aqui.</span></div>`;
   const linhaLib=({uid,p,L})=>{
@@ -1229,6 +1235,7 @@ async function act(a,ds){
     case "exc":{const E=exc[ds.sc][ds.t];E.has(ds.k)?E.delete(ds.k):E.add(ds.k);break}
     case "limpaexc":return run(()=>updateDoc(doc(fs,"vagas",ds.id),{excetoImob:[],excetoCor:[]}),"Exceções removidas.");
     case "lbdow":{const w=+ds.w;lbDow.has(w)?lbDow.delete(w):lbDow.add(w);break}
+    case "lbcorabrir":lbCorAberto.has(ds.k)?lbCorAberto.delete(ds.k):lbCorAberto.add(ds.k);break;
     case "lbsel":lbSel.has(ds.k)?lbSel.delete(ds.k):lbSel.add(ds.k);break;
     case "lbselall":{const ks=imobs.map(x=>x.k);const todas=ks.every(k=>lbSel.has(k));ks.forEach(k=>todas?lbSel.delete(k):lbSel.add(k));break}
     case "lbtodos":{const us=[...perfis.entries()].filter(([,p])=>p.parceiro===ds.k&&ativoNoMes(p,mes)).map(([u])=>u);const todos=us.every(u=>!lbFora.has(u));us.forEach(u=>todos?lbFora.add(u):lbFora.delete(u));break}
