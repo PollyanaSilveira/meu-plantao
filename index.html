@@ -283,7 +283,7 @@ let mes=hojeStr.slice(0,7),mesEscolhido=false,tab="minhas",confirmId=null,desist
 let selDias=new Set(),selTurnos=new Set(["10:00-14:00","14:00-17:00","17:00-20:00"]),turnosExtra=[],libDias=new Set();
 const drafts={};
 let relTipo="escala",relImob="",relCor="";
-let hpMeses="1",hpQuem=(()=>{const base={tqs:["torre"],sqs:[],dom:[]};try{const o={...base,...JSON.parse(localStorage.getItem("mp-hpQuem")||"{}")};for(const k in o)o[k]=Array.isArray(o[k])?o[k]:(o[k]?[o[k]]:[]);return o}catch(x){return base}})(),hpAberto=null,lbDow=new Set(),lbImob="",lbExcl=true,lbSel=new Set(),lbFora=new Set();
+let hpMeses="",hpQuem=(()=>{const base={tqs:["torre"],sqs:[],dom:[]};try{const o={...base,...JSON.parse(localStorage.getItem("mp-hpQuem")||"{}")};for(const k in o)o[k]=Array.isArray(o[k])?o[k]:(o[k]?[o[k]]:[]);return o}catch(x){return base}})(),hpAberto=null,lbDow=new Set(),lbImob="",lbExcl=true,lbSel=new Set(),lbFora=new Set();
 // Exceções: "nv" = criar horários, "lb" = liberar para todos. Cada uma guarda imobiliárias e corretores de fora.
 let nvModo="todas";const exc={nv:{imob:new Set(),cor:new Set()},lb:{imob:new Set(),cor:new Set()}};
 
@@ -603,11 +603,11 @@ function alvoLote(){return [...perfis.entries()].filter(([uid,p])=>ativoNoMes(p,
 function viewHorarios(){
   const tot=doMes(mes),liv=tot.filter(livre);
   let h=`<div class="toolbar">${mesNav()}</div><div class="stats"><div class="stat"><b>${tot.length}</b><span>horários em ${mesMin(mes)}</span></div><div class="stat"><b>${liv.length}</b><span>ainda livres</span></div><div class="stat"><b>${tot.filter(v=>v.corretorId).length}</b><span>escolhidos pelos corretores</span></div></div>`;
-  const plano=planoPadrao(+hpMeses),ajuste=ajustePadrao(+hpMeses),mesesTxt=mesesAPartir(mes,+hpMeses).map(m=>MESES[+m.slice(5,7)-1]).join(", ");
+  const plano=planoPadrao(),ajuste=ajustePadrao(),mesesTxt=nomeMes(mesGerar());
   h+=`<section class="card note-card"><h2>Horários padrão</h2>
   ${tabelaPadrao()}
   ${padEdit?"":`<div class="form">
-  <div class="field"><label for="hp-meses">Gerar para</label><select id="hp-meses">${[["1",`${MESES[+mes.slice(5,7)-1]} ${mes.slice(0,4)}`],["2","Este mês e o próximo"],["3","Os próximos 3 meses"],["6","Os próximos 6 meses"],["12","Os próximos 12 meses"]].map(([v,l])=>`<option value="${v}" ${hpMeses===v?"selected":""}>${l}</option>`).join("")}</select></div>
+  <div class="field"><label for="hp-meses">Gerar para</label><select id="hp-meses">${mesesAPartir(hojeStr.slice(0,7),13).map(m=>`<option value="${m}" ${mesGerar()===m?"selected":""}>${nomeMes(m)}</option>`).join("")}</select></div>
   <div class="field wide"><div class="row"><button class="btn" data-act="padrao" ${!plano.length||ocupado?"disabled":""}>Gerar ${plano.length} ${plano.length===1?"horário":"horários"}</button>
   <span class="why">${plano.length?`${mesesTxt}. Horários que já existem e dias que já passaram são ignorados. Feriados nacionais já entram automaticamente; feriados locais você cadastra em Ajustes.`:`Os horários padrão de ${mesesTxt} já estão criados.`}</span></div></div>
   ${ajuste.length?`<div class="field wide"><div class="row"><button class="btn sec" data-act="ajpadrao" ${ocupado?"disabled":""}>Aplicar a ${ajuste.length} ${ajuste.length===1?"horário livre já criado":"horários livres já criados"}</button><span class="why">Muda “quem pode escolher” nos horários livres de ${mesesTxt} que estão diferentes da tabela. Horários já escolhidos não mudam.</span></div></div>`:""}</div>`}</div></section>`;
@@ -740,9 +740,11 @@ async function definirQuem(id,arr){
   const novo=grupos().map(g=>g.id===id?{...g,quem:arr}:g);
   await run(()=>updateDoc(doc(fs,"config","geral"),{padrao:novo}));
 }
-function planoPadrao(n){
+// Mês escolhido em "Gerar para" (padrão: o mês que está nas setas).
+const mesGerar=()=>hpMeses&&hpMeses>=hojeStr.slice(0,7)?hpMeses:(mes>=hojeStr.slice(0,7)?mes:hojeStr.slice(0,7));
+function planoPadrao(){
   const novos=[],existentes=todas();
-  for(const m of mesesAPartir(mes,n))for(let d=1;d<=diasNoMes(m);d++){
+  for(const m of [mesGerar()])for(let d=1;d<=diasNoMes(m);d++){
     const ds=`${m}-${pad(d)}`;if(ds<hojeStr)continue;
     const g=grupoDe(ds);if(!g)continue;
     const regra=regraGrupo(g.id);
@@ -753,8 +755,8 @@ function planoPadrao(n){
   return novos;
 }
 // Horários livres já criados (no padrão) cuja regra de "quem pode escolher" difere da escolhida agora.
-function ajustePadrao(n){
-  const ms=mesesAPartir(mes,n);
+function ajustePadrao(){
+  const ms=[mesGerar()];
   return todas().filter(v=>ms.includes(v.mes)&&v.data>=hojeStr&&livre(v)&&turnosPadrao(v.data).some(([a,b])=>a===v.ini&&b===v.fim)&&!mesmaRegra(v,regraGrupo(grupoDia(v.data))));
 }
 // Tabela do padrão: visualização ou edição.
@@ -1184,9 +1186,9 @@ async function act(a,ds){
     case "asklimpar":limparLivres=true;break;
     case "nolimpar":limparLivres=false;break;
     case "limpar":{limparLivres=false;const ids=doMes(mes).filter(livre).map(v=>v.id);return run(async()=>{for(let i=0;i<ids.length;i+=200){const b=writeBatch(fs);ids.slice(i,i+200).forEach(id=>{b.delete(doc(fs,"vagas",id));b.delete(doc(fs,"privado",id))});await b.commit()}},`${ids.length} horários livres excluídos.`)}
-    case "ajpadrao":{const vs=ajustePadrao(+hpMeses);if(!vs.length)return;
+    case "ajpadrao":{const vs=ajustePadrao();if(!vs.length)return;
       return run(async()=>{for(let i=0;i<vs.length;i+=400){const b=writeBatch(fs);vs.slice(i,i+400).forEach(v=>b.update(doc(fs,"vagas",v.id),regraGrupo(grupoDia(v.data))));await b.commit()}},`${vs.length} horários atualizados.`)}
-    case "padrao":{const novos=planoPadrao(+hpMeses);if(!novos.length)return;
+    case "padrao":{const novos=planoPadrao();if(!novos.length)return;
       return run(async()=>{for(let i=0;i<novos.length;i+=400){const b=writeBatch(fs);novos.slice(i,i+400).forEach(v=>b.set(doc(collection(fs,"vagas")),v));await b.commit()}},`${novos.length} horários padrão criados. Agora libere os dias em “Liberar horários”.`)}
     case "importar":return run(async()=>{const r=await fetch("seed-outubro.json");const lista=await r.json();const b=writeBatch(fs);
       lista.forEach(v=>{const dono=[...perfis.entries()].find(([,p])=>(!v.parceiro||p.parceiro===v.parceiro)&&v.nomeFixo&&casaNome(p.nome,v.nomeFixo));
