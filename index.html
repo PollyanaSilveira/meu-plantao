@@ -142,6 +142,84 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .linha-imob .sw{background:var(--k)}
 .avisos{display:grid;gap:4px;font-size:.85rem;color:var(--muted);background:var(--soft);border-radius:8px;padding:8px 12px}
 @media (max-width:640px){.passo{grid-template-columns:1fr}}
+/* ===== Redesign da tela do corretor (só vale com body.corretor) ===== */
+body.corretor{color-scheme:light;--navy:#0B1B36;--bg:#F7F8FA;--surface:#FFFFFF;--fg:#0B1B36;--muted:#667085;--line:#E3E7ED;--soft:#F1F3F6;--ok:#2E8B68;--okbg:#E4F2EC;--accent:#0B1B36;--accent-fg:#FFFFFF;--hlbg:#EEF2F8}
+body.corretor.noturno{color-scheme:dark;--bg:#12161D;--surface:#1A2029;--fg:#EEF1F5;--muted:#9AA4B2;--line:#2A323E;--soft:#212833;--ok:#5CC49A;--okbg:#1C3A30;--accent:#9DBEE0;--accent-fg:#12161D;--hlbg:#222B38}
+body.corretor.noturno .top{background:#0B1B36}
+body.corretor.noturno .marca{color:#ffffff;opacity:.02}
+body.corretor.noturno .vg-prox.on{background:var(--okbg);border-color:#2A5E4D}
+body.corretor.noturno .vg-btn{background:#9DBEE0;color:#12161D}
+body.corretor.noturno .orient{background:var(--surface)}
+body.corretor.noturno .tag.st-futuro{background:#9DBEE0;color:#12161D}
+.tema-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:999px;width:34px;height:34px;cursor:pointer;font-size:1rem;line-height:1}
+.tema-btn:hover{background:rgba(255,255,255,.16)}
+body.corretor .marca{opacity:.025;right:-38vmin;bottom:-42vmin;width:min(120vmin,1150px)}
+body.corretor .wrap{max-width:980px;gap:22px;padding-block:22px 72px}
+body.corretor .top{padding:16px 24px;border-radius:14px;min-height:64px}
+body.corretor .top h1{font-size:1.45rem;color:#fff}
+body.corretor .top .pill{background:rgba(46,139,104,.18);color:#8BD9B6}
+body.corretor .tabs{border-bottom:1px solid var(--line);gap:6px}
+body.corretor .tab{color:var(--muted);font-weight:500;border-radius:0;padding:12px 14px;background:none}
+body.corretor .tab:hover{background:none;color:var(--fg)}
+body.corretor .tab[aria-selected="true"]{color:var(--accent);font-weight:700;border-bottom:2px solid var(--accent)}
+body.corretor .tab svg{opacity:.6}
+.vg{display:grid;gap:30px}
+.vg-ola{padding:18px 4px 2px}
+.vg-ola h2{font-family:var(--titulo);font-style:italic;font-weight:400;font-size:clamp(2rem,5vw,2.8rem);line-height:1.1;margin:0;color:var(--fg)}
+.vg-traco{display:block;width:44px;height:3px;border-radius:3px;background:var(--ok);margin:14px 0 12px}
+.vg-ola p{margin:0;color:var(--muted);font-size:1.05rem}
+.vg-secao{display:grid;gap:14px}
+.vg-cab{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.vg-cab>div{display:grid;gap:2px}
+.vg-eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:.72rem;font-weight:700;color:var(--muted)}
+.vg-resumo{font-size:1.05rem;font-weight:600;color:var(--fg)}
+.vg-lista{display:grid;gap:12px}
+.vg-card{display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 22px;box-shadow:0 1px 2px rgba(11,27,54,.03);transition:box-shadow .2s,transform .2s}
+.vg-card:hover{box-shadow:0 6px 18px rgba(11,27,54,.07);transform:translateY(-1px)}
+.vg-card.is-passado{opacity:.6}
+.vg-data{display:grid;justify-items:center;line-height:1.05;border-right:1px solid var(--line);padding-right:16px}
+.vg-data b{font-family:var(--display);font-size:2.3rem;font-weight:600;color:var(--fg)}
+.vg-data span{font-size:.7rem;letter-spacing:.1em;font-weight:700;color:var(--muted);margin-top:3px}
+.vg-info{display:grid;gap:8px;min-width:0}
+.vg-hora{display:flex;align-items:center;gap:8px;font-size:1.25rem;font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums}
+.vg-hora svg{width:18px;height:18px;color:var(--muted)}
+.vg-meta{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;color:var(--muted);font-size:.9rem}
+.vg-badge{background:var(--okbg);color:var(--ok);font-weight:700;font-size:.75rem;border-radius:999px;padding:3px 10px}
+.vg-acoes{display:grid;gap:6px;justify-items:end}
+.vg-btn-sec{display:inline-flex;align-items:center;gap:7px;background:var(--surface);color:var(--accent);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font:inherit;font-weight:600;font-size:.88rem;cursor:pointer;transition:border-color .15s,background .15s}
+.vg-btn-sec:hover{border-color:var(--accent);background:var(--hlbg)}
+.vg-btn-sec svg{width:15px;height:15px}
+.vg-link{background:none;border:0;color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer;padding:4px 2px;text-decoration:underline;text-underline-offset:3px;justify-self:start}
+.vg-acoes .vg-link{justify-self:end}
+.vg-link:hover{color:var(--fg)}
+.vg-btn{background:var(--navy);color:#fff;border:0;border-radius:10px;padding:13px 22px;font:inherit;font-weight:700;cursor:pointer;transition:opacity .15s,transform .15s;white-space:nowrap}
+.vg-btn:hover{opacity:.92;transform:translateY(-1px)}
+.vg-conf{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--soft);border-radius:10px;padding:10px 14px;font-size:.9rem}
+.vg-nota{color:var(--muted);font-size:.85rem;margin:2px 0 0}
+.vg-vazio{background:var(--surface);border:1px dashed var(--line);border-radius:16px;padding:26px 22px;display:grid;gap:4px;color:var(--muted)}
+.vg-vazio b{color:var(--fg);font-family:var(--display);font-size:1.1rem}
+.vg-prox{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 24px}
+.vg-prox>div{display:grid;gap:4px}
+.vg-prox b{font-family:var(--display);font-size:1.2rem;color:var(--fg)}
+.vg-prox.on{background:linear-gradient(0deg,rgba(228,242,236,.55),rgba(228,242,236,.55)),var(--surface);border-color:#CFE6DB}
+.vg-prox.on .vg-eyebrow{color:var(--ok)}
+body.corretor .orient{border-radius:16px;padding:16px 22px}
+.orient-pills{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px}
+.orient-pill{font:inherit;font-size:.82rem;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 12px;cursor:pointer;transition:background .15s,color .15s}
+.orient-pill[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+body.corretor .orient ul{font-size:.9rem;line-height:1.55}
+@media (max-width:640px){
+  .vg-card{grid-template-columns:62px minmax(0,1fr);padding:16px}
+  .vg-data b{font-size:1.9rem}
+  .vg-acoes{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center}
+  .vg-acoes .vg-btn-sec{flex:1;justify-content:center}
+  .vg-prox{flex-direction:column;align-items:stretch}.vg-btn{width:100%}
+  body.corretor .top{padding:12px 14px}
+  body.corretor .tabs{gap:0;justify-content:space-between}
+  body.corretor .tab{padding:11px 6px;font-size:.92rem}
+  body.corretor .tab svg{display:none}
+}
+@media (prefers-reduced-motion:reduce){.vg-card,.vg-btn,.vg-btn-sec{transition:none}.vg-card:hover,.vg-btn:hover{transform:none}}
 .sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
 .login-head p{color:var(--sky)}
 .login .link{color:var(--sky)}
@@ -289,7 +367,7 @@ const configurado=!String(firebaseConfig.apiKey||"").includes("COLE");
 let auth,fs,auth2;
 if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.languageCode="pt";fs=getFirestore(app);auth2=getAuth(initializeApp(firebaseConfig,"cadastro"))}
 
-let lbCorAberto=new Set(),ajusteCi=null,libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,splashAte=0,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
+let noturno=(()=>{try{return localStorage.getItem("mp-tema")==="noturno"}catch(x){return false}})(),orientCat=0,lbCorAberto=new Set(),ajusteCi=null,libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,splashAte=0,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
 let loginModo="escolha",loginErr="",gestorNovo=false,lote=null;
@@ -488,13 +566,34 @@ function calendario(lista,o={}){
 /* ---------- corretor ---------- */
 function viewMinhas(){
   const ms=minhas(),prox=ms.filter(v=>v.data>=hojeStr),pas=ms.filter(v=>v.data<hojeStr);
-  const totH=prox.reduce((a,v)=>a+hrs(v),0);
-  let h=`<div class="toolbar"><div><span class="eyebrow">Próximos plantões</span><div>${prox.length} ${prox.length===1?"plantão":"plantões"} · ${totH}h</div></div>${prox.length?`<button class="btn sm sec" data-act="icstodos">Incluir todos no Calendário</button>`:""}</div>
-  ${prox.length?`<p class="note" style="margin:0">O calendário do celular (iPhone/iCloud, Google ou Outlook) avisa 1 dia antes e 2 horas antes de cada plantão. Se você desistir de um plantão, apague o evento do calendário.</p>`:""}`;
-  h+=prox.length?agenda(prox,{mine:1,showMes:1}):`<div class="vazio"><b>Você ainda não tem plantões marcados</b><span>Quando o gestor liberar dias para você, escolha seus horários em “Escolher horários”.</span></div>`;
-  const _fim=cardProximoMes();
-  if(pas.length)h+=`<button class="btn sm quiet" data-act="passados" style="justify-self:start">${verPassados?"Ocultar":"Ver"} plantões anteriores (${pas.length})</button>${verPassados?agenda([...pas].reverse(),{showMes:1}):""}`;
-  return h+_fim+cardOrientacoes();
+  const totH=prox.reduce((a,v)=>a+hrs(v),0),hr=new Date().getHours();
+  const saud=hr<12?"Bom dia":hr<18?"Boa tarde":"Boa noite",nome=(perfil&&perfil.nome||"").split(" ")[0];
+  let h=`<section class="vg-ola"><h2>${saud}${nome?`, ${esc(nome)}`:""}.</h2><span class="vg-traco" aria-hidden="true"></span><p>Aqui está sua agenda de plantões.</p></section>`;
+  h+=`<section class="vg-secao"><div class="vg-cab"><div><span class="vg-eyebrow">Seus próximos plantões</span><span class="vg-resumo">${prox.length} ${prox.length===1?"plantão":"plantões"} · ${totH}h</span></div>
+  ${prox.length?`<button class="vg-btn-sec" data-act="icstodos">${ICONES.escala}Incluir todos no Calendário</button>`:""}</div>`;
+  h+=prox.length?`<div class="vg-lista">${prox.map(v=>cardPlantao(v,false)).join("")}</div>
+    <p class="vg-nota">O calendário do celular avisa 1 dia e 2 horas antes de cada plantão. Se desistir de um plantão, apague o evento do calendário.</p>`
+    :`<div class="vg-vazio"><b>Você ainda não tem plantões marcados.</b><span>Quando seus dias forem liberados, escolha seus horários na aba “Horários”.</span></div>`;
+  if(pas.length)h+=`<button class="vg-link" data-act="passados">${verPassados?"Ocultar":"Ver"} plantões anteriores (${pas.length})</button>${verPassados?`<div class="vg-lista vg-passados">${[...pas].reverse().map(v=>cardPlantao(v,true)).join("")}</div>`:""}`;
+  h+=`</section>`;
+  return `<div class="vg">${h}${cardProximoMes()}${cardOrientacoes()}</div>`;
+}
+const DOW_LONGO=["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+const MES_CURTO=m=>MESES[+m-1].slice(0,3).toUpperCase();
+// Card de um plantão do corretor (Visão Geral). Usa as mesmas ações de antes: ics, askrel, release, cancel.
+function cardPlantao(v,passado){
+  const pode=!passado&&v.corretorId===me.uid&&v.data>=hojeStr&&cfg.aberta&&cfg.desistir&&!distribui.has(perfil.parceiro);
+  let acoes="";
+  if(!passado){
+    acoes=`<button class="vg-btn-sec" data-act="ics" data-id="${v.id}">${ICONES.escala}Incluir no Calendário</button>`;
+    if(pode)acoes+=desistirId===v.id?"":`<button class="vg-link" data-act="askrel" data-id="${v.id}">Desistir</button>`;
+  }
+  const conf=pode&&desistirId===v.id?`<div class="vg-conf"><span>Devolver este plantão para os outros corretores?</span><button class="vg-btn-sec" data-act="release" data-id="${v.id}" ${ocupado?"disabled":""}>Sim, desistir</button><button class="vg-link" data-act="cancel">Manter</button></div>`:"";
+  return `<article class="vg-card ${passado?"is-passado":""}" id="s-${v.id}">
+    <div class="vg-data"><b>${pad(dnum(v.data))}</b><span>${MES_CURTO(v.data.slice(5,7))}</span><span>${DOW[dowOf(v.data)].toUpperCase()}</span></div>
+    <div class="vg-info"><div class="vg-hora">${ICONES.horarios}<span>${esc(v.ini)} às ${esc(v.fim)}</span></div>
+      <div class="vg-meta"><span class="vg-badge">Seu plantão</span><span>${DOW_LONGO[dowOf(v.data)]}</span>${v.local?`<span>· ${esc(v.local)}</span>`:""}${ehFeriado(v.data)?`<span>· Feriado</span>`:""}</div></div>
+    <div class="vg-acoes">${acoes}</div>${conf}</article>`;
 }
 function viewEscolher(){
   const L=libDe(me.uid,mes);
@@ -522,7 +621,7 @@ function viewEscala(){
     const feitos=meus.filter(v=>quando(v.data,v.fim)<agora).length,prox=meus.find(v=>quando(v.data,v.fim)>=agora);
     let h=`<div class="toolbar">${mesNav()}</div>
     <div class="stats"><div class="stat"><b>${meus.length}</b><span>${meus.length===1?"plantão":"plantões"} em ${mesMin(mes)}</span></div><div class="stat"><b>${totH}h</b><span>de plantão no mês</span></div><div class="stat"><b>${prox?`${ddmm(prox.data)}`:"—"}</b><span>${prox?`próximo · ${esc(prox.ini)} às ${esc(prox.fim)}`:"sem próximos neste mês"}</span></div></div>`;
-    if(!meus.length)return h+`<div class="vazio"><b>Você não tem plantões em ${mesMin(mes)}</b><span>Para escolher horários, use a aba “Escolher horários”.</span></div>`;
+    if(!meus.length)return h+`<div class="vazio"><b>Você não tem plantões em ${mesMin(mes)}</b><span>Para escolher horários, use a aba “Horários”.</span></div>`;
     const det=meus.map(v=>{const p=quando(v.data,v.ini)<=agora?presenca(v,agora):null;
       const est=estadoPlantao(v,agora);
       return `<article class="item item-${est.cls}"><div class="date"><b>${pad(dnum(v.data))}</b><span>${DOW[dowOf(v.data)]}</span></div><div class="slots">
@@ -530,7 +629,7 @@ function viewEscala(){
       <div class="note">Stand de Vendas – Shopping Jequitibá${v.obs?` · ${esc(v.obs)}`:""}${v.checkin&&tsData(v.checkin)?` · check-in ${hm(tsData(v.checkin))}`:""}${v.checkout&&tsData(v.checkout)?` · check-out ${hm(tsData(v.checkout))}`:""}</div></div></article>`}).join("");
     const leg=[["st-futuro","Próximo"],["st-agora","Agora"],["st-feito","Feito com check-in"],["st-passado","Concluído sem check-in"]].map(([c,l])=>`<span class="leg"><span class="leg-cor ${c}"></span>${l}</span>`).join("");
     h+=`<div class="main"><div class="stack" style="gap:8px">${calendario(meus,{estado:true})}<div class="row legenda">${leg}</div></div><section class="list" aria-label="Meus plantões do mês">${det}</section></div>`;
-    return h+`<p class="note">Aqui você só visualiza seus plantões. Para escolher, use a aba “Escolher horários”.</p>`;
+    return h+`<p class="note">Aqui você só visualiza seus plantões. Para escolher, use a aba “Horários”.</p>`;
   }
   const lista=doMes(mes),tot=lista,liv=tot.filter(livre).length;
   let h=`<div class="toolbar">${mesNav()}<div class="row"><span class="note">${tot.length} horários · ${liv} livres</span></div></div>`;
@@ -1061,6 +1160,10 @@ function cardProximoMes(){
   else if(perfil){const L=libDe(me.uid,pm);ok=ativoNoMes(perfil,pm)&&!!(L&&(L.dias||[]).length)&&cfg.aberta;
     if(ok&&L.limite-(L.escolhidas||[]).length<=0){alvo="escala";botao="Ver plantões";info="já escolhidos"}}
   else return "";
+  if(perfil&&!isAdmin&&!isGestor)return `<section class="vg-prox ${ok?"on":""}" aria-live="polite"><div>
+    <span class="vg-eyebrow">${nome}</span><b>${ok?"Escala disponível":"Escala ainda não disponível"}</b>
+    <span class="vg-nota" style="margin:0">${ok?(info?info:"Escolha seus horários antes que outros corretores."):`Libera em ${abre}.`}</span></div>
+    ${ok?`<button class="vg-btn" data-act="irprox" data-alvo="${alvo}">${botao} →</button>`:""}</section>`;
   return `<section class="card proxmes ${ok?"on":""}" aria-live="polite"><div class="pm-linha">
   <div class="pm-txt"><span class="eyebrow">Próximo mês</span><b>${nome}</b></div>
   <span class="pill ${ok?"ok":""}" style="${ok?"":"background:var(--badbg);color:var(--bad)"}">${ok?"Disponível":"Não disponível"}</span>
@@ -1091,15 +1194,17 @@ const ORIENT_PADRAO=`## Maquete\nÉ proibido tocar na maquete. Oriente curiosos 
 const orientacoes=()=>String(cfg.orientacoes??ORIENT_PADRAO).split("\n").map(x=>x.trim()).filter(Boolean);
 function cardOrientacoes(){
   const it=orientacoes();if(!it.length)return "";
-  let corpo="",aberta=false;
-  const fecha=()=>{if(aberta){corpo+="</ul>";aberta=false}};
+  // Separa em temas (## Título); a frase "> " fica no fim.
+  const temas=[];let fecho="",atual=null;
   for(const l of it){
-    if(l.startsWith("## ")){fecha();corpo+=`<h3>${esc(l.slice(3))}</h3>`}
-    else if(l.startsWith("> ")){fecha();corpo+=`<p class="fecho">${esc(l.slice(2))}</p>`}
-    else{if(!aberta){corpo+="<ul>";aberta=true}corpo+=`<li>${esc(l)}</li>`}
+    if(l.startsWith("## ")){atual={t:l.slice(3),itens:[]};temas.push(atual)}
+    else if(l.startsWith("> "))fecho=l.slice(2);
+    else{if(!atual){atual={t:"Geral",itens:[]};temas.push(atual)}atual.itens.push(l)}
   }
-  fecha();
-  return `<section class="card dobra-card orient" data-dobra="orient"><h2><span class="orient-ic" aria-hidden="true">i</span>Orientações do Plantão</h2><div class="orient-corpo">${corpo}</div></section>`;
+  const i=Math.min(orientCat,temas.length-1),tm=temas[i]||{t:"",itens:[]};
+  return `<section class="card dobra-card orient" data-dobra="orient"><h2><span class="orient-ic" aria-hidden="true">i</span>Orientações do Plantão</h2>
+  <div class="orient-corpo">${temas.length>1?`<div class="orient-pills" role="tablist">${temas.map((t,j)=>`<button class="orient-pill" role="tab" data-act="orientcat" data-i="${j}" aria-selected="${j===i}">${esc(t.t)}</button>`).join("")}</div>`:""}
+  <ul>${tm.itens.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>${fecho?`<p class="fecho">${esc(fecho)}</p>`:""}</div></section>`;
 }
 let logoPngCache=null;
 function logoPng(){
@@ -1169,19 +1274,21 @@ function render(){
   else{
     const T=isAdmin?[["checkin","Check-in"],["escala","Escala"],["horarios","1. Horários"],["liberar","2. Liberar horários"],["relatorios","3. Relatórios"],["corretores","Corretores",solicitacoes.size?`${perfis.size} · ${solicitacoes.size} pedido${solicitacoes.size>1?"s":""}`:perfis.size],["ajustes","Ajustes"]]
       :isGestor?[["distribuir","Distribuir horários"],["checkin","Check-in"]]
-      :[["minhas","Visão Geral",minhas().filter(v=>v.data>=hojeStr).length],["checkin","Check-in"],...(distribui.has(perfil.parceiro)?[]:[["escolher","Escolher horários"]]),["escala","Meu calendário"]];
+      :[["minhas","Visão geral"],["checkin","Check-in"],...(distribui.has(perfil.parceiro)?[]:[["escolher","Horários"]]),["escala","Calendário"]];
     const nome=isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome.split(" ")[0]);
     const sub=(isAdmin||isGestor)?esc(me.email||""):esc(nomeParc(perfil.parceiro));
     const ini=(isAdmin||isGestor)?"G":esc(perfil.nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase());
     const corpo=tab==="distribuir"?viewDistribuir():tab==="checkin"?((isAdmin||isGestor)?viewCheckinGestor():viewCheckinCorretor()):tab==="minhas"?viewMinhas():tab==="escolher"?viewEscolher():tab==="escala"?viewEscala():tab==="liberar"?viewLiberar():tab==="horarios"?viewHorarios():tab==="corretores"?viewCorretores():tab==="relatorios"?viewRelatorios():viewAjustes();
     h=`<div class="wrap"><header class="top"><div class="marca-nome">${LOGO}<span class="sep" aria-hidden="true"></span><h1>Meu Plantão</h1></div>
-    <div class="who"><span class="pill ${cfg.aberta?"ok":"warn"}">${cfg.aberta?"Escala em aberto":"Escala fechada"}</span>
+    <div class="who">${!isAdmin&&!isGestor?`<button class="tema-btn" data-act="tema" aria-pressed="${noturno}" aria-label="${noturno?"Usar modo claro":"Usar modo noturno"}" title="${noturno?"Modo claro":"Modo noturno"}">${noturno?"☀":"☾"}</button>`:""}<span class="pill ${cfg.aberta?"ok":"warn"}">${cfg.aberta?"Escala em aberto":"Escala fechada"}</span>
     <div class="usermenu"><button class="userbtn" data-act="menu" aria-haspopup="menu" aria-expanded="${menuAberto}"><span class="av">${ini}</span><span class="nm">${nome}</span>${ICONES.seta}</button>
-    ${menuAberto?`<div class="dropdown" role="menu"><div class="info"><b>${isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome)}</b><span>${sub}</span></div><button role="menuitem" data-act="sair">${ICONES.sair}Sair</button></div>`:""}</div></div></header>
+    ${menuAberto?`<div class="dropdown" role="menu"><div class="info"><b>${isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome)}</b><span>${sub}</span></div>${!isAdmin&&!isGestor?`<button role="menuitem" data-act="tema">${noturno?"☀ Modo claro":"☾ Modo noturno"}</button>`:""}<button role="menuitem" data-act="sair">${ICONES.sair}Sair</button></div>`:""}</div></div></header>
     <nav class="tabs" role="tablist" aria-label="Seções">${T.map(([k,l,n])=>`<button class="tab" role="tab" data-act="tab" data-v="${k}" aria-selected="${tab===k}">${ICONES[k]||""}${l}${n!==undefined?`<span class="n">${n}</span>`:""}</button>`).join("")}</nav>
     <main class="list">${corpo}</main></div>`;
   }
   document.body.classList.toggle("modo-login",fase!=="ok");
+  document.body.classList.toggle("corretor",fase==="ok"&&!isAdmin&&!isGestor);
+  document.body.classList.toggle("noturno",fase==="ok"&&!isAdmin&&!isGestor&&noturno);
   root.innerHTML=h;
   root.querySelectorAll("[data-dobra]").forEach(el=>{if(!abertos.has(el.dataset.dobra))el.classList.add("fechado")});
   if(fid){const n=document.getElementById(fid);if(n){n.focus();try{if(ss!=null)n.setSelectionRange(ss,se)}catch(e){}}}
@@ -1236,6 +1343,8 @@ async function act(a,ds){
     case "exc":{const E=exc[ds.sc][ds.t];E.has(ds.k)?E.delete(ds.k):E.add(ds.k);break}
     case "limpaexc":return run(()=>updateDoc(doc(fs,"vagas",ds.id),{excetoImob:[],excetoCor:[]}),"Exceções removidas.");
     case "lbdow":{const w=+ds.w;lbDow.has(w)?lbDow.delete(w):lbDow.add(w);break}
+    case "tema":noturno=!noturno;menuAberto=false;try{localStorage.setItem("mp-tema",noturno?"noturno":"claro")}catch(x){}break;
+    case "orientcat":orientCat=+ds.i;break;
     case "lbcorabrir":lbCorAberto.has(ds.k)?lbCorAberto.delete(ds.k):lbCorAberto.add(ds.k);break;
     case "lbsel":lbSel.has(ds.k)?lbSel.delete(ds.k):lbSel.add(ds.k);break;
     case "lbselall":{const ks=imobs.map(x=>x.k);const todas=ks.every(k=>lbSel.has(k));ks.forEach(k=>todas?lbSel.delete(k):lbSel.add(k));break}
