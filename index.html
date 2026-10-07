@@ -605,15 +605,12 @@ function viewHorarios(){
   let h=`<div class="toolbar">${mesNav()}</div><div class="stats"><div class="stat"><b>${tot.length}</b><span>horários em ${mesMin(mes)}</span></div><div class="stat"><b>${liv.length}</b><span>ainda livres</span></div><div class="stat"><b>${tot.filter(v=>v.corretorId).length}</b><span>escolhidos pelos corretores</span></div></div>`;
   const plano=planoPadrao(+hpMeses),ajuste=ajustePadrao(+hpMeses),mesesTxt=mesesAPartir(mes,+hpMeses).map(m=>MESES[+m.slice(5,7)-1]).join(", ");
   h+=`<section class="card note-card"><h2>Horários padrão</h2>
-  <div class="tablewrap"><table><thead><tr><th>Dias</th><th>Horários</th><th>Quem pode escolher</th></tr></thead><tbody>
-  <tr><td>Terça, quinta e sábado</td><td class="n">10h–14h · 14h–17h · 17h–20h</td><td>${seletorGrupo("tqs")}</td></tr>
-  <tr><td>Segunda, quarta e sexta</td><td class="n">10h–15h · 15h–20h</td><td>${seletorGrupo("sqs")}</td></tr>
-  <tr><td>Domingo e feriado</td><td class="n">14h–20h</td><td>${seletorGrupo("dom")}</td></tr></tbody></table></div>
-  <div class="form">
+  ${tabelaPadrao()}
+  ${padEdit?"":`<div class="form">
   <div class="field"><label for="hp-meses">Gerar para</label><select id="hp-meses">${[["1",`${MESES[+mes.slice(5,7)-1]} ${mes.slice(0,4)}`],["2","Este mês e o próximo"],["3","Os próximos 3 meses"],["6","Os próximos 6 meses"],["12","Os próximos 12 meses"]].map(([v,l])=>`<option value="${v}" ${hpMeses===v?"selected":""}>${l}</option>`).join("")}</select></div>
   <div class="field wide"><div class="row"><button class="btn" data-act="padrao" ${!plano.length||ocupado?"disabled":""}>Gerar ${plano.length} ${plano.length===1?"horário":"horários"}</button>
   <span class="why">${plano.length?`${mesesTxt}. Horários que já existem e dias que já passaram são ignorados. Feriados nacionais já entram automaticamente; feriados locais você cadastra em Ajustes.`:`Os horários padrão de ${mesesTxt} já estão criados.`}</span></div></div>
-  ${ajuste.length?`<div class="field wide"><div class="row"><button class="btn sec" data-act="ajpadrao" ${ocupado?"disabled":""}>Aplicar a ${ajuste.length} ${ajuste.length===1?"horário livre já criado":"horários livres já criados"}</button><span class="why">Muda “quem pode escolher” nos horários livres de ${mesesTxt} que estão diferentes da tabela. Horários já escolhidos não mudam.</span></div></div>`:""}</div></section>`;
+  ${ajuste.length?`<div class="field wide"><div class="row"><button class="btn sec" data-act="ajpadrao" ${ocupado?"disabled":""}>Aplicar a ${ajuste.length} ${ajuste.length===1?"horário livre já criado":"horários livres já criados"}</button><span class="why">Muda “quem pode escolher” nos horários livres de ${mesesTxt} que estão diferentes da tabela. Horários já escolhidos não mudam.</span></div></div>`:""}</div>`}</div></section>`;
   if(!vagas.size)h+=`<section class="card note-card"><h2>Importar a escala de outubro</h2><p>Carrega os 69 plantões de outubro/2026 que já estavam montados.</p><div class="row"><button class="btn" data-act="importar" ${ocupado?"disabled":""}>Importar outubro/2026</button></div></section>`;
   const turnos=[...TURNOS.map(t=>t.join("-")),...turnosExtra.filter(t=>!TURNOS.some(x=>x.join("-")===t))];
   const total=selDias.size*selTurnos.size;
@@ -691,32 +688,44 @@ const FERIADOS_NAC=["2026-01-01","2026-04-03","2026-04-21","2026-05-01","2026-09
   "2027-01-01","2027-03-26","2027-04-21","2027-05-01","2027-09-07","2027-10-12","2027-11-02","2027-11-15","2027-11-20","2027-12-25",
   "2028-01-01","2028-04-14","2028-04-21","2028-05-01","2028-09-07","2028-10-12","2028-11-02","2028-11-15","2028-11-20","2028-12-25"];
 const ehFeriado=d=>FERIADOS_NAC.includes(d)||(cfg.feriados||[]).includes(d);
-const DIAS_TORRE=[2,4,6]; // terça, quinta, sábado
-function turnosPadrao(d){
-  const w=dowOf(d);
-  if(w===0||ehFeriado(d))return [["14:00","20:00"]];
-  if(DIAS_TORRE.includes(w))return [["10:00","14:00"],["14:00","17:00"],["17:00","20:00"]];
-  return [["10:00","15:00"],["15:00","20:00"]];
+// Padrão de horários: grupos de dias com seus turnos e quem pode escolher.
+// Fica salvo em config/geral.padrao; a coordenação edita quando quiser. Feriado segue o grupo marcado como "feriados".
+const PADRAO_INICIAL=()=>[
+  {id:"tqs",dias:[2,4,6],turnos:[["10:00","14:00"],["14:00","17:00"],["17:00","20:00"]],quem:hpQuem.tqs||["torre"],feriado:false},
+  {id:"sqs",dias:[1,3,5],turnos:[["10:00","15:00"],["15:00","20:00"]],quem:hpQuem.sqs||[],feriado:false},
+  {id:"dom",dias:[0],turnos:[["14:00","20:00"]],quem:hpQuem.dom||[],feriado:true}];
+let padEdit=null;
+const grupos=()=>padEdit||(Array.isArray(cfg.padrao)&&cfg.padrao.length?cfg.padrao:PADRAO_INICIAL());
+const DIAS_NOME=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+function nomeGrupo(gr){
+  const d=[...gr.dias].sort((a,b)=>(a||7)-(b||7)).map(w=>DIAS_NOME[w]);
+  let t=d.length?(d.length===1?d[0]:d.slice(0,-1).join(", ")+" e "+d[d.length-1]):"Sem dias";
+  if(gr.feriado)t+=(d.length?" e ":"")+"feriado";
+  return t.charAt(0).toUpperCase()+t.slice(1);
 }
+const hhTxt=h=>h.slice(3)==="00"?`${+h.slice(0,2)}h`:`${+h.slice(0,2)}h${h.slice(3)}`;
+const turnosTxt=gr=>gr.turnos.length?gr.turnos.map(([a,b])=>`${hhTxt(a)}–${hhTxt(b)}`).join(" · "):"Sem plantão";
+function grupoDe(d){const gs=grupos(),w=dowOf(d);if(ehFeriado(d)){const f=gs.find(g=>g.feriado);if(f)return f}return gs.find(g=>g.dias.includes(w))||null}
+function turnosPadrao(d){const g=grupoDe(d);return g?g.turnos:[]}
 function mesesAPartir(m,n){const out=[];for(let i=0;i<n;i++){const dt=new Date(+m.slice(0,4),+m.slice(5,7)-1+i,1);out.push(`${dt.getFullYear()}-${pad(dt.getMonth()+1)}`)}return out}
-// Grupo do dia no padrão: tqs = terça/quinta/sábado, sqs = segunda/quarta/sexta, dom = domingo e feriado.
-function grupoDia(d){const w=dowOf(d);return (w===0||ehFeriado(d))?"dom":DIAS_TORRE.includes(w)?"tqs":"sqs"}
-// Quem pode escolher num grupo de dias: nenhuma ou todas marcadas = todas; uma = só ela; várias = todas, exceto as não marcadas.
-function regraGrupo(g){
-  const sel=(hpQuem[g]||[]).filter(k=>parc(k));
+function grupoDia(d){const g=grupoDe(d);return g?g.id:""}
+const quemDe=id=>(grupos().find(g=>g.id===id)?.quem||[]).filter(k=>parc(k));
+// Quem pode escolher: nenhuma ou todas marcadas = todas; uma = só ela; várias = todas, exceto as não marcadas.
+function regraGrupo(id){
+  const sel=quemDe(id);
   if(!sel.length||sel.length===imobs.length)return {restrito:"",excetoImob:[]};
   if(sel.length===1)return {restrito:sel[0],excetoImob:[]};
   return {restrito:"",excetoImob:imobs.map(x=>x.k).filter(k=>!sel.includes(k))};
 }
-function textoGrupo(g){
-  const sel=(hpQuem[g]||[]).filter(k=>parc(k));
+function textoGrupo(id){
+  const sel=quemDe(id);
   if(!sel.length||sel.length===imobs.length)return "Todas as imobiliárias";
   if(sel.length>imobs.length/2)return "Todas, exceto "+imobs.filter(x=>!sel.includes(x.k)).map(x=>x.nome).join(", ");
   return "Só "+sel.map(nomeParc).join(", ");
 }
 const mesmaRegra=(v,r)=>(v.restrito||"")===r.restrito&&[...(v.excetoImob||[])].sort().join()===[...r.excetoImob].sort().join();
 function seletorGrupo(g){
-  const lst=(hpQuem[g]||[]).filter(k=>parc(k)),todas=!lst.length||lst.length===imobs.length,sel=new Set(todas?imobs.map(x=>x.k):lst);
+  const lst=quemDe(g),todas=!lst.length||lst.length===imobs.length,sel=new Set(todas?imobs.map(x=>x.k):lst);
   return `<div class="multi"><button type="button" class="multi-btn" data-act="hpabrir" data-g="${g}" aria-expanded="${hpAberto===g}">${esc(textoGrupo(g))}</button>
   ${hpAberto===g?`<div class="multi-pop" role="group" aria-label="Quem pode escolher">
     <label class="check"><input type="checkbox" data-act="hptodas" data-g="${g}" ${todas?"checked":""}> <b>Todas as imobiliárias</b></label>
@@ -725,12 +734,19 @@ function seletorGrupo(g){
     <span class="why">Desmarque as imobiliárias que ficam de fora, ou deixe marcadas só as que podem escolher.</span>
     <button type="button" class="btn sm" data-act="hpabrir" data-g="">Pronto</button></div>`:""}</div>`;
 }
+// Muda "quem pode escolher" de um grupo: no modo edição só no rascunho; fora dele, salva na hora.
+async function definirQuem(id,arr){
+  if(padEdit){const g=padEdit.find(x=>x.id===id);if(g)g.quem=arr;render();return}
+  const novo=grupos().map(g=>g.id===id?{...g,quem:arr}:g);
+  await run(()=>updateDoc(doc(fs,"config","geral"),{padrao:novo}));
+}
 function planoPadrao(n){
   const novos=[],existentes=todas();
   for(const m of mesesAPartir(mes,n))for(let d=1;d<=diasNoMes(m);d++){
     const ds=`${m}-${pad(d)}`;if(ds<hojeStr)continue;
-    const regra=regraGrupo(grupoDia(ds));
-    for(const [ini,fim] of turnosPadrao(ds))
+    const g=grupoDe(ds);if(!g)continue;
+    const regra=regraGrupo(g.id);
+    for(const [ini,fim] of g.turnos)
       if(!existentes.some(v=>v.data===ds&&v.ini===ini&&v.fim===fim))
         novos.push({mes:m,data:ds,ini,fim,...regra,local:"",obs:ehFeriado(ds)?"Feriado":"",aberta:true,corretorId:null,escolhidoEm:null});
   }
@@ -740,6 +756,26 @@ function planoPadrao(n){
 function ajustePadrao(n){
   const ms=mesesAPartir(mes,n);
   return todas().filter(v=>ms.includes(v.mes)&&v.data>=hojeStr&&livre(v)&&turnosPadrao(v.data).some(([a,b])=>a===v.ini&&b===v.fim)&&!mesmaRegra(v,regraGrupo(grupoDia(v.data))));
+}
+// Tabela do padrão: visualização ou edição.
+function tabelaPadrao(){
+  const gs=grupos();
+  if(!padEdit)return `<div class="tablewrap"><table><thead><tr><th>Dias</th><th>Horários</th><th>Quem pode escolher</th></tr></thead><tbody>
+    ${gs.map(g=>`<tr><td>${esc(nomeGrupo(g))}</td><td class="n">${esc(turnosTxt(g))}</td><td>${seletorGrupo(g.id)}</td></tr>`).join("")}</tbody></table></div>
+    <div class="row"><button class="btn sm sec" data-act="padedit">Editar padrão (dias e horários)</button><span class="why">Os horários já criados não mudam. Para uma ressalva num dia só, use “Criar horários avulsos” ou edite o horário na Escala.</span></div>`;
+  const usados={};gs.forEach(g=>g.dias.forEach(w=>{usados[w]=(usados[w]||0)+1}));
+  const conflito=Object.entries(usados).filter(([,n])=>n>1).map(([w])=>DIAS_NOME[w]),sem=[0,1,2,3,4,5,6].filter(w=>!usados[w]).map(w=>DIAS_NOME[w]);
+  return `<div class="stack">${gs.map((g,i)=>`<div class="grupo-imob stack" style="gap:8px">
+    <div class="row"><b>${esc(nomeGrupo(g))}</b><button class="btn sm danger" data-act="pedel" data-i="${i}" style="margin-left:auto">Excluir linha</button></div>
+    <div class="row"><span class="lbl">Dias:</span>${[1,2,3,4,5,6,0].map(w=>`<button class="chip" data-act="pedia" data-i="${i}" data-w="${w}" aria-pressed="${g.dias.includes(w)}">${DOW[w]}</button>`).join("")}
+      <button class="chip" data-act="peferiado" data-i="${i}" aria-pressed="${!!g.feriado}">Feriados</button></div>
+    <div class="row"><span class="lbl">Turnos:</span>${g.turnos.map(([a,b],j)=>`<span class="chip" style="cursor:default">${a} às ${b}<button class="link" data-act="peturnodel" data-i="${i}" data-j="${j}" aria-label="Tirar turno ${a} às ${b}" style="margin-left:4px">✕</button></span>`).join("")||`<span class="note">nenhum</span>`}</div>
+    <div class="row"><label for="pe-ini-${i}" class="note">Novo turno</label><input type="time" id="pe-ini-${i}" style="width:auto"><span>às</span><input type="time" id="pe-fim-${i}" style="width:auto"><button class="btn sm quiet" data-act="peturnoadd" data-i="${i}">Adicionar turno</button></div>
+    <div class="row"><span class="lbl">Quem pode escolher:</span>${seletorGrupo(g.id)}</div></div>`).join("")}
+    <div class="row"><button class="btn sm quiet" data-act="peadd">+ Nova linha de dias</button></div>
+    ${conflito.length?`<p class="err" style="margin:0">${esc(conflito.join(", "))} ${conflito.length===1?"está":"estão"} em mais de uma linha. Vale a primeira.</p>`:""}
+    ${sem.length?`<p class="note" style="margin:0">Sem plantão no padrão: ${esc(sem.join(", "))}.</p>`:""}
+    <div class="row"><button class="btn" data-act="pesalvar" ${ocupado?"disabled":""}>Salvar padrão</button><button class="btn quiet" data-act="pecancelar">Cancelar</button></div></div>`;
 }
 /* ---------- relatórios ---------- */
 const TIPOS={escala:"Escala do mês",corretor:"Resumo por corretor",livres:"Horários livres",presenca:"Presença (check-in)"};
@@ -1198,10 +1234,22 @@ async function act(a,ds){
     case "ajcinao":{const id=ds.id;ajusteCi=null;return run(()=>updateDoc(doc(fs,"vagas",id),{checkin:null,checkout:null}),"Check-in marcado como não feito.")}
     case "irprox":mes=proximoMes();mesEscolhido=true;tab=ds.alvo;confirmId=null;render();window.scrollTo({top:0,behavior:"smooth"});return;
     case "hpabrir":hpAberto=ds.g&&hpAberto!==ds.g?ds.g:null;break;
-    case "hptodas":hpQuem[ds.g]=[];salvarHp();break;
-    case "hpq":{const atual=(hpQuem[ds.g]||[]).filter(k=>parc(k)),set=new Set(atual.length?atual:imobs.map(x=>x.k));set.has(ds.k)?set.delete(ds.k):set.add(ds.k);
+    case "hptodas":return definirQuem(ds.g,[]);
+    case "hpq":{const atual=quemDe(ds.g),set=new Set(atual.length?atual:imobs.map(x=>x.k));set.has(ds.k)?set.delete(ds.k):set.add(ds.k);
       if(!set.size){toast("Marque pelo menos uma imobiliária.");break}
-      hpQuem[ds.g]=set.size===imobs.length?[]:[...set];salvarHp();break}
+      return definirQuem(ds.g,set.size===imobs.length?[]:[...set])}
+    case "padedit":padEdit=JSON.parse(JSON.stringify(grupos()));hpAberto=null;break;
+    case "pecancelar":padEdit=null;hpAberto=null;break;
+    case "pedia":{const g=padEdit[+ds.i],w=+ds.w;g.dias=g.dias.includes(w)?g.dias.filter(x=>x!==w):[...g.dias,w];break}
+    case "peferiado":{const i=+ds.i;padEdit.forEach((g,j)=>g.feriado=j===i?!g.feriado:false);break}
+    case "peturnodel":padEdit[+ds.i].turnos.splice(+ds.j,1);break;
+    case "peturnoadd":{const i=+ds.i,a=document.getElementById("pe-ini-"+i)?.value,b=document.getElementById("pe-fim-"+i)?.value;
+      if(!a||!b||mins(b)<=mins(a)){toast("Informe um início e um fim depois do início.");break}
+      const g=padEdit[i];if(!g.turnos.some(([x,y])=>x===a&&y===b))g.turnos=[...g.turnos,[a,b]].sort((x,y)=>x[0].localeCompare(y[0]));break}
+    case "peadd":padEdit.push({id:"g"+Date.now().toString(36),dias:[],turnos:[],quem:[],feriado:false});break;
+    case "pedel":padEdit.splice(+ds.i,1);break;
+    case "pesalvar":{const novo=padEdit.filter(g=>g.dias.length||g.feriado);if(novo.some(g=>!g.turnos.length)){toast("Cada linha precisa de pelo menos um turno (ou exclua a linha).");break}
+      padEdit=null;hpAberto=null;return run(()=>updateDoc(doc(fs,"config","geral"),{padrao:novo}),"Padrão salvo. Ele vale para os próximos meses que você gerar.")}
     case "distrib":{const k=ds.k,n=new Set(distribui);n.has(k)?n.delete(k):n.add(k);return run(()=>setDoc(doc(fs,"publico","distribui"),{imobs:[...n]}),`${nomeParc(k)}: ${n.has(k)?"agora o gestor distribui os horários":"os corretores voltam a escolher"}.`)}
     case "aprovar":{const u=ds.uid,x=solicitacoes.get(u);if(!x)return;
       return run(async()=>{const b=writeBatch(fs);
