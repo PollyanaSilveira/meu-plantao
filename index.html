@@ -439,7 +439,7 @@ function excecoesUI(sc,titulo){
 }
 const minhas=()=>todas().filter(minha).sort(sortV);
 function motivo(v){
-  if(!cfg.aberta)return "Escala fechada";
+  if(!mesAberto(v.mes))return "Escala fechada";
   if(!ativoNoMes(perfil,v.mes))return "Você está desativado neste mês";
   const L=libDe(me.uid,v.mes);
   if(!L||!(L.dias||[]).includes(v.data))return "Dia não liberado para você";
@@ -540,7 +540,7 @@ function slotLine(v,o={}){
   }
   const calBtn=o.mine&&mine&&v.data>=hojeStr?`<button class="btn sm quiet" data-act="ics" data-id="${v.id}" title="Incluir no calendário do celular, com lembretes">${ICONES.escala}Incluir no Calendário</button>`:"";
   if(calBtn)acts=calBtn;
-  if(o.mine&&v.corretorId===me.uid&&v.data>=hojeStr&&cfg.aberta&&cfg.desistir&&!distribui.has(perfil.parceiro)){
+  if(o.mine&&v.corretorId===me.uid&&v.data>=hojeStr&&mesAberto(v.mes)&&cfg.desistir&&!distribui.has(perfil.parceiro)){
     if(desistirId===v.id)extra=`<div class="confirm danger"><span>Devolver este plantão para os outros corretores?</span><button class="btn sm danger" data-act="release" data-id="${v.id}" ${ocupado?"disabled":""}>Desistir do plantão</button><button class="btn sm quiet" data-act="cancel">Manter</button></div>`;
     else acts=calBtn+`<button class="btn sm quiet" data-act="askrel" data-id="${v.id}">Desistir</button>`;
   }
@@ -592,7 +592,7 @@ const DOW_LONGO=["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta
 const MES_CURTO=m=>MESES[+m-1].slice(0,3).toUpperCase();
 // Card de um plantão do corretor (Visão Geral). Usa as mesmas ações de antes: ics, askrel, release, cancel.
 function cardPlantao(v,passado){
-  const pode=!passado&&v.corretorId===me.uid&&v.data>=hojeStr&&cfg.aberta&&cfg.desistir&&!distribui.has(perfil.parceiro);
+  const pode=!passado&&v.corretorId===me.uid&&v.data>=hojeStr&&mesAberto(v.mes)&&cfg.desistir&&!distribui.has(perfil.parceiro);
   let acoes="";
   if(!passado){
     acoes=`<button class="vg-btn-sec" data-act="ics" data-id="${v.id}">${ICONES.escala}Incluir no Calendário</button>`;
@@ -610,7 +610,7 @@ function viewEscolher(){
   let h=`<div class="toolbar">${mesNav()}</div>`;
   if(distribui.has(perfil.parceiro))return h+`<div class="vazio"><b>Seus horários são definidos pelo gestor da ${esc(nomeParc(perfil.parceiro))}</b><span>Seus plantões aparecem em “Visão Geral”.</span></div>`;
   if(!ativoNoMes(perfil,mes)||!L||!(L.dias||[]).length)return h+`<div class="vazio"><b>Você não está liberado(a) para plantão em ${mesMin(mes)}</b><span>Quando o gestor liberar dias para você, eles aparecem aqui.</span></div>`;
-  if(!cfg.aberta)return h+`<div class="vazio"><b>A escala está fechada no momento</b><span>O gestor abre a escala quando houver horários disponíveis.</span></div>`;
+  if(!mesAberto(mes))return h+`<div class="vazio"><b>A escala está fechada no momento</b><span>O gestor abre a escala quando houver horários disponíveis.</span></div>`;
   const usados=(L.escolhidas||[]).length,resta=Math.max(0,L.limite-usados);
   const dias=[...L.dias].sort();
   const nosDias=doMes(mes).filter(v=>dias.includes(v.data)&&v.data>=hojeStr&&(minha(v)||paraMim(v))),lv=nosDias.filter(paraMim);
@@ -1194,7 +1194,7 @@ function cardProximoMes(){
   let ok=false,info="",botao="Escolher horários",alvo="escolher";
   if(isGestor){ok=diasImob(gImob,pm).length>0;alvo="distribuir";botao="Distribuir horários"}
   else if(perfil&&distribui.has(perfil.parceiro)){const n=minhas().filter(v=>v.mes===pm).length;ok=n>0;alvo="escala";botao="Ver plantões";info=ok?`${n} definido${n===1?"":"s"}`:""}
-  else if(perfil){const L=libDe(me.uid,pm);ok=ativoNoMes(perfil,pm)&&!!(L&&(L.dias||[]).length)&&cfg.aberta;
+  else if(perfil){const L=libDe(me.uid,pm);ok=ativoNoMes(perfil,pm)&&!!(L&&(L.dias||[]).length)&&mesAberto(pm);
     if(ok&&L.limite-(L.escolhidas||[]).length<=0){alvo="escala";botao="Ver plantões";info="já escolhidos"}}
   else return "";
   if(perfil&&!isAdmin&&!isGestor)return `<section class="vg-prox ${ok?"on":""}" aria-live="polite"><div>
@@ -1243,6 +1243,9 @@ function cardOrientacoes(){
   <div class="orient-corpo">${temas.length>1?`<div class="orient-pills" role="tablist">${temas.map((t,j)=>`<button class="orient-pill" role="tab" data-act="orientcat" data-i="${j}" aria-selected="${j===i}">${esc(t.t)}</button>`).join("")}</div>`:""}
   <ul>${tm.itens.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>${fecho?`<p class="fecho">${esc(fecho)}</p>`:""}</div></section>`;
 }
+// Escala aberta por mês: cfg.abertos = ["AAAA-MM", ...]. Sem a lista (versão anterior), vale o interruptor geral cfg.aberta.
+const mesAberto=m=>Array.isArray(cfg.abertos)?cfg.abertos.includes(m):cfg.aberta!==false;
+const mesesAbertos=()=>Array.isArray(cfg.abertos)?[...cfg.abertos].filter(m=>m>=hojeStr.slice(0,7)).sort():(cfg.aberta!==false?[hojeStr.slice(0,7)]:[]);
 let logoPngCache=null;
 function logoPng(){
   if(logoPngCache)return Promise.resolve(logoPngCache);
@@ -1276,9 +1279,9 @@ async function baixarPdf(){
   toast("PDF gerado.");
 }
 function viewAjustes(){
-  let h=`<section class="card"><div class="toolbar"><h2>Escala do mês</h2><span class="pill ${cfg.aberta?"ok":"warn"}">${cfg.aberta?"Escala em aberto":"Escala fechada"}</span></div>
-  <p class="note">Em aberto, os corretores escolhem nos dias liberados. Feche quando a escala estiver completa.</p>
-  <div class="row"><button class="btn ${cfg.aberta?"sec":""}" data-act="toggle" ${ocupado?"disabled":""}>${cfg.aberta?"Fechar escala":"Abrir escala"}</button></div>
+  let h=`<section class="card"><div class="toolbar"><h2>Escala por mês</h2></div>
+  <p class="note">Ligue os meses em que os corretores podem escolher horários (nos dias liberados). Desligue quando a escala do mês estiver completa.</p>
+  <div class="stack" style="gap:6px">${mesesAPartir(hojeStr.slice(0,7),4).map(m=>{const on=mesAberto(m);return `<div class="row"><button class="switch" role="switch" aria-checked="${on}" data-act="mesaberto" data-m="${m}" aria-label="${on?"Fechar":"Abrir"} ${nomeMes(m)}" ${ocupado?"disabled":""}><span class="knob"></span></button><b style="min-width:9ch">${nomeMes(m)}</b><span class="st ${on?"on":""}">${on?"Em aberto":"Fechada"}</span></div>`}).join("")}</div>
   <form class="form" data-form="cfg">
   <div class="field wide"><label for="cf-fer">Feriados locais (dd/mm/aaaa, separados por vírgula)</label><input type="text" id="cf-fer" value="${esc(dval("cf-fer",(cfg.feriados||[]).map(d=>`${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(0,4)}`).join(", ")))}" placeholder="12/10/2026, 02/11/2026"></div>
   <div class="field wide"><label class="check"><input type="checkbox" id="cf-des" ${dval("cf-des",cfg.desistir!==false)?"checked":""}> Corretor pode desistir enquanto a escala estiver em aberto</label></div>
@@ -1317,7 +1320,7 @@ function render(){
     const ini=(isAdmin||isGestor)?"G":esc(perfil.nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase());
     const corpo=tab==="calgestor"?viewCalGestor():tab==="meuscor"?viewMeusCorretores():tab==="distribuir"?viewDistribuir():tab==="checkin"?((isAdmin||isGestor)?viewCheckinGestor():viewCheckinCorretor()):tab==="minhas"?viewMinhas():tab==="escolher"?viewEscolher():tab==="escala"?viewEscala():tab==="liberar"?viewLiberar():tab==="horarios"?viewHorarios():tab==="corretores"?viewCorretores():tab==="relatorios"?viewRelatorios():viewAjustes();
     h=`<div class="wrap"><header class="top"><div class="marca-nome">${LOGO}<span class="sep" aria-hidden="true"></span><h1>Meu Plantão</h1></div>
-    <div class="who">${!isAdmin&&!isGestor?`<button class="tema-btn" data-act="tema" aria-pressed="${noturno}" aria-label="${noturno?"Usar modo claro":"Usar modo noturno"}" title="${noturno?"Modo claro":"Modo noturno"}">${noturno?"☀":"☾"}</button>`:""}<span class="pill ${cfg.aberta?"ok":"warn"}">${cfg.aberta?"Escala em aberto":"Escala fechada"}</span>
+    <div class="who">${!isAdmin&&!isGestor?`<button class="tema-btn" data-act="tema" aria-pressed="${noturno}" aria-label="${noturno?"Usar modo claro":"Usar modo noturno"}" title="${noturno?"Modo claro":"Modo noturno"}">${noturno?"☀":"☾"}</button>`:""}${(()=>{if(!Array.isArray(cfg.abertos))return `<span class="pill ${cfg.aberta!==false?"ok":"warn"}">${cfg.aberta!==false?"Escala em aberto":"Escala fechada"}</span>`;const ab=mesesAbertos();return `<span class="pill ${ab.length?"ok":"warn"}">${ab.length?ab.map(m=>MESES[+m.slice(5,7)-1]).join(", ")+" em aberto":"Escala fechada"}</span>`})()}
     <div class="usermenu"><button class="userbtn" data-act="menu" aria-haspopup="menu" aria-expanded="${menuAberto}"><span class="av">${ini}</span><span class="nm">${nome}</span>${ICONES.seta}</button>
     ${menuAberto?`<div class="dropdown" role="menu"><div class="info"><b>${isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome)}</b><span>${sub}</span></div>${!isAdmin&&!isGestor?`<button role="menuitem" data-act="tema">${noturno?"☀ Modo claro":"☾ Modo noturno"}</button>`:""}<button role="menuitem" data-act="sair">${ICONES.sair}Sair</button></div>`:""}</div></div></header>
     <nav class="tabs" role="tablist" aria-label="Seções">${T.map(([k,l,n])=>`<button class="tab" role="tab" data-act="tab" data-v="${k}" aria-selected="${tab===k}">${ICONES[k]||""}${l}${n!==undefined?`<span class="n">${n}</span>`:""}</button>`).join("")}</nav>
@@ -1359,7 +1362,9 @@ async function act(a,ds){
     case "askdel":delId=ds.id;break;
     case "nodel":delId=null;break;
     case "del":{const v={id:ds.id,...vagas.get(ds.id)};editId=delId=null;return run(async()=>{const b=writeBatch(fs);b.delete(doc(fs,"vagas",v.id));b.delete(doc(fs,"privado",v.id));await tirarDaLib(b,v);await b.commit()},"Horário excluído.")}
-    case "toggle":return run(()=>updateDoc(doc(fs,"config","geral"),{aberta:!cfg.aberta}),cfg.aberta?"Escala fechada.":"Escala em aberto para os corretores.");
+    case "mesaberto":{const m=ds.m,base=Array.isArray(cfg.abertos)?cfg.abertos:(cfg.aberta!==false?mesesAPartir(hojeStr.slice(0,7),4):[]),set=new Set(base);
+      set.has(m)?set.delete(m):set.add(m);
+      return run(()=>updateDoc(doc(fs,"config","geral"),{abertos:[...set].sort()}),`${nomeMes(m)}: ${set.has(m)?"escala em aberto":"escala fechada"}.`)}
     case "dia":if(ds.d<hojeStr)return;selDias.has(ds.d)?selDias.delete(ds.d):selDias.add(ds.d);break;
     case "dias":selDias.clear();if(ds.q!=="nenhum")for(let d=1;d<=diasNoMes(mes);d++){const s=`${mes}-${pad(d)}`,w=dowOf(s);if(s<hojeStr)continue;if(ds.q==="todos"||(ds.q==="uteis"&&w>0&&w<6)||(ds.q==="fds"&&(w===0||w===6)))selDias.add(s)}break;
     case "turno":selTurnos.has(ds.t)?selTurnos.delete(ds.t):selTurnos.add(ds.t);break;

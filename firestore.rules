@@ -108,7 +108,7 @@ service cloud.firestore {
       function lib() { return /databases/$(database)/documents/liberacoes/$(request.auth.uid + '_' + resource.data.mes); }
       function so(keys) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys); }
       function escolher() {
-        return temPerfil() && cfg().aberta == true
+        return temPerfil() && (cfg().get('abertos', null) == null ? cfg().get('aberta', false) == true : cfg().abertos.hasAny([resource.data.mes]))
           && !perfil().get('inativos', []).hasAny([resource.data.mes])
           && perfil().get('plantao', true) == true
           && !distribuida(perfil().parceiro)
@@ -122,7 +122,7 @@ service cloud.firestore {
           && getAfter(lib()).data.escolhidas.hasAny([id]);
       }
       function desistir() {
-        return temPerfil() && cfg().aberta == true && cfg().desistir == true
+        return temPerfil() && (cfg().get('abertos', null) == null ? cfg().get('aberta', false) == true : cfg().abertos.hasAny([resource.data.mes])) && cfg().desistir == true
           && resource.data.corretorId == request.auth.uid
           && so(['corretorId', 'escolhidoEm'])
           && request.resource.data.corretorId == null
