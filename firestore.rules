@@ -111,7 +111,6 @@ service cloud.firestore {
         return temPerfil() && (cfg().get('abertos', null) == null ? cfg().get('aberta', false) == true : cfg().abertos.hasAny([resource.data.mes]))
           && !perfil().get('inativos', []).hasAny([resource.data.mes])
           && perfil().get('plantao', true) == true
-          && !distribuida(perfil().parceiro)
           && !resource.data.get('excetoImob', []).hasAny([perfil().parceiro])
           && !resource.data.get('excetoCor', []).hasAny([request.auth.uid])
           && resource.data.aberta == true && resource.data.corretorId == null

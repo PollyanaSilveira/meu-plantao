@@ -549,7 +549,7 @@ function slotLine(v,o={}){
   }
   const calBtn=o.mine&&mine&&v.data>=hojeStr?`<button class="btn sm quiet" data-act="ics" data-id="${v.id}" title="Incluir no calendário do celular, com lembretes">${ICONES.escala}Incluir no Calendário</button>`:"";
   if(calBtn)acts=calBtn;
-  if(o.mine&&v.corretorId===me.uid&&v.data>=hojeStr&&mesAberto(v.mes)&&cfg.desistir&&!distribui.has(perfil.parceiro)){
+  if(o.mine&&v.corretorId===me.uid&&v.data>=hojeStr&&mesAberto(v.mes)&&cfg.desistir&&!bloqueadoMes(v.mes)){
     if(desistirId===v.id)extra=`<div class="confirm danger"><span>Devolver este plantão para os outros corretores?</span><button class="btn sm danger" data-act="release" data-id="${v.id}" ${ocupado?"disabled":""}>Desistir do plantão</button><button class="btn sm quiet" data-act="cancel">Manter</button></div>`;
     else acts=calBtn+`<button class="btn sm quiet" data-act="askrel" data-id="${v.id}">Desistir</button>`;
   }
@@ -601,7 +601,7 @@ const DOW_LONGO=["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta
 const MES_CURTO=m=>MESES[+m-1].slice(0,3).toUpperCase();
 // Card de um plantão do corretor (Visão Geral). Usa as mesmas ações de antes: ics, askrel, release, cancel.
 function cardPlantao(v,passado){
-  const pode=!passado&&v.corretorId===me.uid&&v.data>=hojeStr&&mesAberto(v.mes)&&cfg.desistir&&!distribui.has(perfil.parceiro);
+  const pode=!passado&&v.corretorId===me.uid&&v.data>=hojeStr&&mesAberto(v.mes)&&cfg.desistir&&!bloqueadoMes(v.mes);
   let acoes="";
   if(!passado){
     acoes=`<button class="vg-btn-sec" data-act="ics" data-id="${v.id}">${ICONES.escala}Incluir no Calendário</button>`;
@@ -617,7 +617,7 @@ function cardPlantao(v,passado){
 function viewEscolher(){
   const L=libDe(me.uid,mes);
   let h=`<div class="toolbar">${mesNav()}</div>`;
-  if(distribui.has(perfil.parceiro))return h+`<div class="vazio"><b>Seus horários são definidos pelo gestor da ${esc(nomeParc(perfil.parceiro))}</b><span>Seus plantões aparecem em “Visão Geral”.</span></div>`;
+  if(bloqueadoMes(mes))return h+`<div class="vazio"><b>Seus horários são definidos pelo gestor da ${esc(nomeParc(perfil.parceiro))}</b><span>Seus plantões aparecem em “Visão Geral”.</span></div>`;
   if(!ativoNoMes(perfil,mes)||!L||!(L.dias||[]).length)return h+`<div class="vazio"><b>Você não está liberado(a) para plantão em ${mesMin(mes)}</b><span>Quando o gestor liberar dias para você, eles aparecem aqui.</span></div>`;
   if(!mesAberto(mes))return h+`<div class="vazio"><b>A escala está fechada no momento</b><span>O gestor abre a escala quando houver horários disponíveis.</span></div>`;
   const usados=(L.escolhidas||[]).length,resta=Math.max(0,L.limite-usados);
@@ -640,7 +640,7 @@ function viewEscala(){
     const feitos=meus.filter(v=>quando(v.data,v.fim)<agora).length,prox=meus.find(v=>quando(v.data,v.fim)>=agora);
     let h=`<div class="toolbar">${mesNav()}</div>${avisoGestorDistribui(false)}
     <div class="stats"><div class="stat"><b>${meus.length}</b><span>${meus.length===1?"plantão":"plantões"} em ${mesMin(mes)}</span></div><div class="stat"><b>${totH}h</b><span>de plantão no mês</span></div><div class="stat"><b>${prox?`${ddmm(prox.data)}`:"—"}</b><span>${prox?`próximo · ${esc(prox.ini)} às ${esc(prox.fim)}`:"sem próximos neste mês"}</span></div></div>`;
-    if(!meus.length)return h+`<div class="vazio"><b>Você não tem plantões em ${mesMin(mes)}</b><span>${distribui.has(perfil.parceiro)?"Quando o gestor da sua imobiliária definir seus plantões, eles aparecem aqui.":"Para escolher horários, use a aba “Horários”."}</span></div>`;
+    if(!meus.length)return h+`<div class="vazio"><b>Você não tem plantões em ${mesMin(mes)}</b><span>${bloqueadoMes(mes)?"Quando o gestor da sua imobiliária definir seus plantões, eles aparecem aqui.":"Para escolher horários, use a aba “Horários”."}</span></div>`;
     const det=meus.map(v=>{const p=quando(v.data,v.ini)<=agora?presenca(v,agora):null;
       const est=estadoPlantao(v,agora);
       return `<article class="item item-${est.cls}"><div class="date"><b>${pad(dnum(v.data))}</b><span>${DOW[dowOf(v.data)]}</span></div><div class="slots">
@@ -648,7 +648,7 @@ function viewEscala(){
       <div class="note">Stand de Vendas – Shopping Jequitibá${v.obs?` · ${esc(v.obs)}`:""}${v.checkin&&tsData(v.checkin)?` · check-in ${hm(tsData(v.checkin))}`:""}${v.checkout&&tsData(v.checkout)?` · check-out ${hm(tsData(v.checkout))}`:""}</div></div></article>`}).join("");
     const leg=[["st-futuro","Próximo"],["st-agora","Agora"],["st-feito","Feito com check-in"],["st-passado","Concluído sem check-in"]].map(([c,l])=>`<span class="leg"><span class="leg-cor ${c}"></span>${l}</span>`).join("");
     h+=`<div class="main"><div class="stack" style="gap:8px">${calendario(meus,{estado:true})}<div class="row legenda">${leg}</div></div><section class="list" aria-label="Meus plantões do mês">${det}</section></div>`;
-    return h+(distribui.has(perfil.parceiro)?"":`<p class="note">Aqui você só visualiza seus plantões. Para escolher, use a aba “Horários”.</p>`);
+    return h+(bloqueadoMes(mes)?"":`<p class="note">Aqui você só visualiza seus plantões. Para escolher, use a aba “Horários”.</p>`);
   }
   const lista=doMes(mes),tot=lista,liv=tot.filter(livre).length;
   let h=`<div class="toolbar">${mesNav()}<div class="row"><span class="note">${tot.length} horários · ${liv} livres</span></div></div>`;
@@ -730,7 +730,7 @@ const vagasLote=()=>doMes(mes).filter(v=>lbDow.has(dowOf(v.data))&&v.data>=hojeS
 function diasLote(){return [...new Set(vagasLote().map(v=>v.data))].sort()}
 // Horários livres desses dias que hoje não estão abertos para alguma das imobiliárias marcadas.
 const fechadosLote=()=>vagasLote().filter(v=>livre(v)&&[...lbSel].some(k=>(v.restrito&&v.restrito!==k)||(v.excetoImob||[]).includes(k)));
-function alvoLote(){return [...perfis.entries()].filter(([uid,p])=>ativoNoMes(p,mes)&&lbSel.has(p.parceiro)&&!lbFora.has(uid))}
+function alvoLote(){return [...perfis.entries()].filter(([uid,p])=>ativoNoMes(p,mes)&&lbSel.has(p.parceiro)&&!distribui.has(p.parceiro)&&!lbFora.has(uid))}
 function viewHorarios(){
   const tot=doMes(mes),liv=tot.filter(livre);
   let h=`<div class="toolbar">${mesNav()}</div><div class="stats"><div class="stat"><b>${tot.length}</b><span>horários em ${mesMin(mes)}</span></div><div class="stat"><b>${liv.length}</b><span>ainda livres</span></div><div class="stat"><b>${tot.filter(v=>v.corretorId).length}</b><span>escolhidos pelos corretores</span></div></div>`;
@@ -1222,7 +1222,7 @@ function cardProximoMes(){
   const pm=proximoMes(),nome=MESES[+pm.slice(5,7)-1],abre=`${pad(DIA_LIBERACAO)}/${hojeStr.slice(5,7)}`;
   let ok=false,info="",botao="Escolher horários",alvo="escolher";
   if(isGestor){ok=diasImob(gImob,pm).length>0;alvo="distribuir";botao="Distribuir horários"}
-  else if(perfil&&distribui.has(perfil.parceiro)){const n=minhas().filter(v=>v.mes===pm).length;ok=n>0;alvo="escala";botao="Ver plantões";info=ok?`${n} definido${n===1?"":"s"}`:""}
+  else if(perfil&&bloqueadoMes(pm)){const n=minhas().filter(v=>v.mes===pm).length;ok=n>0;alvo="escala";botao="Ver plantões";info=ok?`${n} definido${n===1?"":"s"}`:""}
   else if(perfil){const L=libDe(me.uid,pm);ok=ativoNoMes(perfil,pm)&&!!(L&&(L.dias||[]).length)&&mesAberto(pm);
     if(ok&&L.limite-(L.escolhidas||[]).length<=0){alvo="escala";botao="Ver plantões";info="já escolhidos"}}
   else return "";
@@ -1277,12 +1277,16 @@ const mesAberto=m=>Array.isArray(cfg.abertos)?cfg.abertos.includes(m):cfg.aberta
 const mesesAbertos=()=>Array.isArray(cfg.abertos)?[...cfg.abertos].filter(m=>m>=hojeStr.slice(0,7)).sort():(cfg.aberta!==false?[hojeStr.slice(0,7)]:[]);
 // Aviso para corretores de imobiliária em que o gestor distribui os horários.
 function avisoGestorDistribui(curto){
-  if(!perfil||!distribui.has(perfil.parceiro))return "";
+  if(!perfil||!bloqueadoMes(mes))return "";
   const im=esc(nomeParc(perfil.parceiro));
   const cad=`<span class="aviso-ic" aria-hidden="true">🔒</span>`;
   return curto?`<div class="aviso-gestor">${cad}<span><b>Escolha bloqueada no momento.</b> Seus plantões são definidos pelo gestor da <b>${im}</b>.</span></div>`
     :`<div class="aviso-gestor">${cad}<div><b>Escolha de horários bloqueada no momento</b><span>Os dias e horários da ${im} estão sendo definidos pelo gestor da imobiliária. Precisa trocar ou desmarcar um plantão? Fale com ele: a alteração precisa ser liberada pelo gestor.</span></div></div>`;
 }
+// Corretor de imobiliária com gestor fica bloqueado, a não ser que a coordenação libere ele individualmente no mês.
+const temLibMes=m=>{const L=me&&libDe(me.uid,m);return !!(L&&(L.dias||[]).length)};
+const bloqueadoMes=m=>!!perfil&&distribui.has(perfil.parceiro)&&!temLibMes(m);
+const temLibFutura=()=>!!me&&[...libs.values()].some(L=>L.uid===me.uid&&(L.dias||[]).length&&L.mes>=hojeStr.slice(0,7));
 let logoPngCache=null;
 function logoPng(){
   if(logoPngCache)return Promise.resolve(logoPngCache);
@@ -1351,7 +1355,7 @@ function render(){
   else{
     const T=isAdmin?[["checkin","Check-in"],["escala","Escala"],["horarios","1. Horários"],["liberar","2. Liberar horários"],["relatorios","3. Relatórios"],["corretores","Corretores",solicitacoes.size?`${perfis.size} · ${solicitacoes.size} pedido${solicitacoes.size>1?"s":""}`:perfis.size],["ajustes","Ajustes"]]
       :isGestor?[["distribuir","Distribuir horários"],["calgestor","Calendário"],["meuscor","Meus corretores",perfis.size],["checkin","Check-in"]]
-      :[["minhas","Visão geral"],["checkin","Check-in"],...(distribui.has(perfil.parceiro)?[]:[["escolher","Horários"]]),["escala","Calendário"]];
+      :[["minhas","Visão geral"],["checkin","Check-in"],...(distribui.has(perfil.parceiro)&&!temLibFutura()?[]:[["escolher","Horários"]]),["escala","Calendário"]];
     const nome=isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome.split(" ")[0]);
     const sub=(isAdmin||isGestor)?esc(me.email||""):esc(nomeParc(perfil.parceiro));
     const ini=(isAdmin||isGestor)?"G":esc(perfil.nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase());
