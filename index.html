@@ -220,6 +220,16 @@ body.corretor .orient ul{font-size:.9rem;line-height:1.55}
   body.corretor .tab svg{display:none}
 }
 @media (prefers-reduced-motion:reduce){.vg-card,.vg-btn,.vg-btn-sec{transition:none}.vg-card:hover,.vg-btn:hover{transform:none}}
+/* Textos de apoio nas telas de cadastro e ajustes: largura total e ritmo regular */
+.card p,.card .note{max-width:none}
+.card>p.note,.card>.note{margin:0;line-height:1.5}
+.card .form{gap:14px 18px}
+.card .form .field label{font-size:.8rem;letter-spacing:.01em}
+.card .why{font-size:.8rem;line-height:1.45}
+.cor{padding:12px 16px}
+.cor-head{gap:8px 14px}
+.cor-head .acts{display:flex;gap:6px;flex-wrap:wrap}
+.grupo-imob{padding:12px 16px}
 .sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
 .login-head p{color:var(--sky)}
 .login .link{color:var(--sky)}
@@ -768,14 +778,14 @@ function viewCorretores(){
   const ant=antigos();
   if(ant.length)h+=`<section class="card note-card warn"><h2>Atualizar acesso (${ant.length})</h2><p>${ant.map(([,p])=>esc(p.nome)).join(", ")} ${ant.length===1?"foi cadastrado(a)":"foram cadastrados"} no formato antigo. Clique para atualizar; sem isso, ${ant.length===1?"ele(a) não consegue":"eles não conseguem"} entrar e não dá para editar o cadastro.</p><div class="row"><button class="btn" data-act="converter" ${ocupado?"disabled":""}>Atualizar acesso</button></div></section>`;
   if(pend.length)h+=`<section class="card note-card"><h2>Corretores da escala sem cadastro (${pend.length})</h2>
-    <p>Encontrei estes nomes na escala. Importe todos de uma vez e depois edite cada um para colocar o ano de nascimento, que libera o acesso.</p>
+    <p>Nomes encontrados na escala. Importe e depois inclua o ano de nascimento de cada um.</p>
     <p class="note">${pend.map(x=>`${esc(x.nome)} <span class="why">(${esc(nomeParc(x.k))})</span>`).join(" · ")}</p>
     <div class="row"><button class="btn" data-act="importcor" ${ocupado?"disabled":""}>${importando?"Importando…":`Importar ${pend.length} ${pend.length===1?"corretor":"corretores"}`}</button></div></section>`;
   const rowsF=rows;
   const plantonistas=rows.filter(([,p])=>ativoNoMes(p,mes)).length;
   h+=`<section class="card"><div class="toolbar"><h2>Corretores por imobiliária (${rows.length})</h2>
   </div>
-  <p class="note">Clique no botão ao lado do nome para <b>ativar ou desativar</b> o corretor em ${mesMin(mes)} (mude o mês nas setas). Só os ativos aparecem em “Liberar horários” e conseguem escolher horários. Os desativados continuam cadastrados. Sem o ano de nascimento, o corretor ainda não consegue entrar.</p>
+  <p class="note">Interruptor ao lado do nome: ativa ou desativa o corretor em ${mesMin(mes)}. Sem ano de nascimento, ele ainda não entra.</p>
   ${rowsF.length?imobs.filter(x=>rowsF.some(([,p])=>p.parceiro===x.k)).concat(rowsF.some(([,p])=>!parc(p.parceiro))?[{k:"__sem",nome:"Sem imobiliária"}]:[]).map(im=>{
     const doGrupo=rowsF.filter(([,p])=>im.k==="__sem"?!parc(p.parceiro):p.parceiro===im.k),pl=doGrupo.filter(([,p])=>ativoNoMes(p,mes)).length;
     return `<div class="stack grupo-imob dobra-card" data-dobra="cor-${esc(im.k)}" style="gap:8px"><div class="row" style="${cores(im.k)}"><span class="sw"></span><b>${esc(im.nome)}</b><span class="note">${doGrupo.length} ${doGrupo.length===1?"corretor":"corretores"} · ${pl} ${pl===1?"ativo":"ativos"} em ${mesMin(mes)}</span></div>
@@ -791,7 +801,7 @@ function viewCorretores(){
   <form class="stack" data-form="lote" style="margin-top:10px"><label for="nc-lote">Um corretor por linha: nome; imobiliária; ano; ativo (sim/não, opcional)</label>
   <textarea id="nc-lote" style="min-height:140px" placeholder="Tarcyla Sodré; SOLO; 1990&#10;Henrique Alves; TORRE; 1985&#10;Carla Souza; Realiza; 1979; não">${esc(dval("nc-lote",""))}</textarea>
   ${lote?`<p class="${lote.erros.length?"err":"note"}">${esc(lote.msg)}</p>${lote.erros.length?`<ul class="note">${lote.erros.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}`:""}
-  <div class="row"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Cadastrar lista</button><span class="why">O nome da imobiliária precisa ser igual ao da lista de imobiliárias (maiúsculas e acentos não importam).</span></div></form></details></section>`;
+  <div class="row"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Cadastrar lista</button><span class="why">Use o nome da imobiliária como está cadastrado.</span></div></form></details></section>`;
   return h;
 }
 /* ---------- horários padrão ---------- */
@@ -1044,8 +1054,9 @@ function viewCheckinGestor(){
 function cardLocalStand(){
   const st=cfg.stand||{};
   return `<section class="card dobra-card" data-dobra="stand"><h2>Local do stand (check-in)</h2>
-  <p>O corretor só consegue fazer check-in e check-out dentro deste raio. Para definir, vá até o stand com o celular, entre como gestor e toque em <b>Usar minha localização atual</b>.</p>
+  <p class="note">O check-in só é aceito dentro deste raio. No stand, toque em <b>Usar minha localização atual</b>.</p>
   <p class="note">${st.lat!=null?`Definido: ${(+st.lat).toFixed(5)}, ${(+st.lng).toFixed(5)} · raio de ${st.raio||150} m`:"Ainda não definido."}</p>
+  ${st.lat!=null&&(+st.lat>6||+st.lat<-34||+st.lng>-34||+st.lng<-74)?`<p class="err" style="margin:0">Este local fica fora do Brasil, então ninguém consegue fazer check-in. Corrija as coordenadas ou use “Usar minha localização atual” no stand.</p>`:""}
   <div class="row"><button class="btn" data-act="standaqui" ${ocupado?"disabled":""}>Usar minha localização atual</button></div>
   <form class="form" data-form="stand">
   <div class="field"><label for="sd-coord">Ou cole as coordenadas (Google Maps)</label><input type="text" id="sd-coord" value="${esc(dval("sd-coord",st.lat!=null?`${st.lat}, ${st.lng}`:""))}" placeholder="-14.79, -39.27"></div>
@@ -1114,7 +1125,7 @@ function cardSolicitacoes(){
 function cardGestoresImob(){
   const gs=[...gestores.entries()].sort((a,b)=>nomeParc(a[1].imob).localeCompare(nomeParc(b[1].imob)));
   return cardSolicitacoes()+`<section class="card dobra-card" data-dobra="gestimob"><h2>Gestores de imobiliária (${gs.length})</h2>
-  <p class="note">O gestor da imobiliária entra com e-mail e senha, vê só os horários e corretores da imobiliária dele e escolhe quem fica em cada horário. Ligue “Gestor distribui” para os corretores dessa imobiliária não escolherem sozinhos; desligue quando quiser voltar ao normal.</p>
+  <p class="note">“Gestor distribui” ligado: só o gestor da imobiliária escolhe os horários dela.</p>
   <div class="stack" style="gap:6px">${imobs.map(x=>{const on=distribui.has(x.k),g=gs.filter(([,v])=>v.imob===x.k);
     return `<div class="row" style="${cores(x.k)}"><button class="switch" role="switch" aria-checked="${on}" data-act="distrib" data-k="${esc(x.k)}" aria-label="Gestor distribui na ${esc(x.nome)}" ${ocupado?"disabled":""}><span class="knob"></span></button><span class="sw"></span><b>${esc(x.nome)}</b><span class="st ${on?"on":""}">${on?"Gestor distribui":"Corretores escolhem"}</span>
     <span class="note">${g.length?g.map(([,v])=>esc(v.nome)+" ("+esc(v.email)+")").join(", "):"sem gestor"}</span>${g.map(([u,v])=>remGest===u?`<button class="btn sm danger" data-act="remgest" data-uid="${u}">Confirmar</button><button class="btn sm quiet" data-act="noremgest">Cancelar</button>`:`<button class="btn sm quiet" data-act="askremgest" data-uid="${u}" title="Remover ${esc(v.nome)}">Remover ${esc(v.nome.split(" ")[0])}</button>`).join("")}</div>`}).join("")}</div>
@@ -1240,19 +1251,19 @@ async function baixarPdf(){
 }
 function viewAjustes(){
   let h=`<section class="card"><div class="toolbar"><h2>Escala do mês</h2><span class="pill ${cfg.aberta?"ok":"warn"}">${cfg.aberta?"Escala em aberto":"Escala fechada"}</span></div>
-  <p>Com a escala em aberto, cada corretor escolhe seus horários entre os dias liberados para ele. Feche a escala quando ela estiver completa.</p>
+  <p class="note">Em aberto, os corretores escolhem nos dias liberados. Feche quando a escala estiver completa.</p>
   <div class="row"><button class="btn ${cfg.aberta?"sec":""}" data-act="toggle" ${ocupado?"disabled":""}>${cfg.aberta?"Fechar escala":"Abrir escala"}</button></div>
   <form class="form" data-form="cfg">
-  <div class="field"><label for="cf-fer">Feriados (dd/mm/aaaa, separados por vírgula)</label><input type="text" id="cf-fer" value="${esc(dval("cf-fer",(cfg.feriados||[]).map(d=>`${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(0,4)}`).join(", ")))}" placeholder="12/10/2026, 02/11/2026"></div>
-  <div class="field" style="align-self:center"><label class="check"><input type="checkbox" id="cf-des" ${dval("cf-des",cfg.desistir!==false)?"checked":""}> Corretor pode desistir enquanto a escala estiver em aberto</label></div>
+  <div class="field wide"><label for="cf-fer">Feriados locais (dd/mm/aaaa, separados por vírgula)</label><input type="text" id="cf-fer" value="${esc(dval("cf-fer",(cfg.feriados||[]).map(d=>`${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(0,4)}`).join(", ")))}" placeholder="12/10/2026, 02/11/2026"></div>
+  <div class="field wide"><label class="check"><input type="checkbox" id="cf-des" ${dval("cf-des",cfg.desistir!==false)?"checked":""}> Corretor pode desistir enquanto a escala estiver em aberto</label></div>
   <div class="field wide"><label for="cf-av">Aviso para os corretores</label><textarea id="cf-av" maxlength="400" placeholder="Ex.: Escolha seus dias até sexta, 18h.">${esc(dval("cf-av",cfg.aviso||""))}</textarea></div>
   <div class="field"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Salvar ajustes</button></div></form></section>`;
   h+=`<section class="card dobra-card" data-dobra="orientedit"><h2>Orientações do Plantão</h2>
-  <form class="stack" data-form="orient"><label for="or-txt">Um tópico por linha. Use “## ” no começo da linha para um título (ex.: ## Vestimenta) e “> ” para a frase final. Aparece no final da Visão Geral dos corretores.</label>
+  <form class="stack" data-form="orient"><label for="or-txt">Um tópico por linha · “## ” cria um título · “> ” é a frase final</label>
   <textarea id="or-txt" style="min-height:130px">${esc(dval("or-txt",orientacoes().join("\n")))}</textarea>
   <div class="row"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Salvar orientações</button></div></form></section>`;
   h+=cardLocalStand();
-  h+=`<section class="card dobra-card" data-dobra="imobs"><h2>Imobiliárias</h2><p class="note">Aparecem na tela de entrada dos corretores. Clique em uma para renomear: os corretores e plantões dela continuam ligados, e ninguém perde o acesso.</p>
+  h+=`<section class="card dobra-card" data-dobra="imobs"><h2>Imobiliárias</h2><p class="note">Clique em uma para renomear ou juntar com outra. Corretores e plantões continuam ligados.</p>
   <div class="row">${imobs.map(p=>editImob===p.k?`<form class="row" data-form="renparc" data-k="${esc(p.k)}"><input type="text" id="rn-nome" maxlength="40" style="width:auto" value="${esc(dval("rn-nome",p.nome))}" aria-label="Novo nome de ${esc(p.nome)}"><button class="btn sm" type="submit">Salvar</button><button class="btn sm quiet" type="button" data-act="renparc" data-k="">Cancelar</button>
     <span class="row" style="gap:6px"><label for="jn-dest" class="note">ou juntar com</label><select id="jn-dest" style="width:auto"><option value="">Escolha…</option>${imobs.filter(x=>x.k!==p.k).map(x=>`<option value="${esc(x.k)}">${esc(x.nome)}</option>`).join("")}</select><button class="btn sm danger" type="button" data-act="juntar" data-k="${esc(p.k)}">Juntar</button></span></form>`
     :`<button class="chip" style="${cores(p.k)}" data-act="renparc" data-k="${esc(p.k)}" title="Renomear"><span class="sw"></span>${esc(p.nome)} <span class="why">${[...perfis.values()].filter(c=>c.parceiro===p.k).length}</span></button>`).join("")}</div>
@@ -1624,7 +1635,10 @@ async function submit(form){
     await run(()=>updateDoc(doc(fs,"config","geral"),{orientacoes:t}),"Orientações salvas.");delete drafts["or-txt"];render()}
   else if(f==="stand"){const c=g("sd-coord").split(/[,;\s]+/).filter(Boolean).map(Number),raio=Math.max(30,parseInt(g("sd-raio"))||150),tol=Math.max(0,parseInt(g("sd-tol"))||0);
     let stand=cfg.stand||null;
-    if(c.length===2&&c.every(x=>isFinite(x))&&Math.abs(c[0])<=90&&Math.abs(c[1])<=180)stand={lat:c[0],lng:c[1],raio};
+    if(c.length===2&&c.every(x=>isFinite(x))&&Math.abs(c[0])<=90&&Math.abs(c[1])<=180){
+      // Brasil: latitude entre +6 e −34; longitude entre −74 e −34.
+      if(c[0]>6||c[0]<-34||c[1]>-34||c[1]<-74){toast("Essas coordenadas ficam fora do Brasil. No Google Maps, copie os dois números do ponto do stand (latitude primeiro, ex.: -14.79, -39.28).");return}
+      stand={lat:c[0],lng:c[1],raio}}
     else if(g("sd-coord")){toast("Coordenadas inválidas. Use o formato: -14.79, -39.27");return}
     else if(stand)stand={...stand,raio};
     await run(()=>updateDoc(doc(fs,"config","geral"),{...(stand?{stand}:{}),tolerancia:tol}),"Local do stand salvo.");["sd-coord","sd-raio","sd-tol"].forEach(k=>delete drafts[k]);render()}
