@@ -126,8 +126,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .pm-txt b{font-family:var(--display);font-size:1.1rem}
 .proxmes.on{border:1px solid var(--ok);background:var(--okbg)}
 .proxmes.on h2,.proxmes.on p{color:var(--fg)}
-.orient{padding:12px 16px}
-.orient h2{font-size:1rem}
+.orient{padding:14px 18px;border:1px solid var(--line);border-left:5px solid var(--accent);background:linear-gradient(90deg,var(--hlbg),var(--surface) 60%)}
+.orient h2{font-family:var(--display);font-size:1.12rem;font-weight:600;color:var(--accent);letter-spacing:.01em}
+.orient-ic{width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-fg);display:inline-grid;place-items:center;font-family:Georgia,serif;font-style:italic;font-weight:700;font-size:.85rem;flex:none}
 .orient-corpo{display:grid;gap:4px}
 .orient h3{font-family:var(--display);font-size:.92rem;margin:8px 0 0;color:var(--fg)}
 .orient ul{margin:0;padding-left:18px;display:grid;gap:3px;color:var(--muted);font-size:.9rem}
@@ -1098,7 +1099,7 @@ function cardOrientacoes(){
     else{if(!aberta){corpo+="<ul>";aberta=true}corpo+=`<li>${esc(l)}</li>`}
   }
   fecha();
-  return `<section class="card dobra-card orient" data-dobra="orient"><h2>Orientações do Plantão</h2><div class="orient-corpo">${corpo}</div></section>`;
+  return `<section class="card dobra-card orient" data-dobra="orient"><h2><span class="orient-ic" aria-hidden="true">i</span>Orientações do Plantão</h2><div class="orient-corpo">${corpo}</div></section>`;
 }
 let logoPngCache=null;
 function logoPng(){
