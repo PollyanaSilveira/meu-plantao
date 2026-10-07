@@ -456,6 +456,7 @@ function errMsg(e){
   const c=e&&e.code;
   if(c==="permission-denied")return "Essa alteração não foi permitida. A escala pode ter sido fechada ou o horário não está liberado para você.";
   if(c==="unavailable")return "Sem conexão com o servidor. Verifique a internet e tente de novo.";
+  if(c==="invalid-argument")return "O sistema não conseguiu gravar esse formato de dado. Avise o suporte do Meu Plantão.";
   return (e&&e.message&&!String(c).includes("/")&&!c)?e.message:"Não foi possível salvar agora. Tente de novo.";
 }
 function authMsg(e){
@@ -817,7 +818,10 @@ const PADRAO_INICIAL=()=>[
   {id:"sqs",dias:[1,3,5],turnos:[["10:00","15:00"],["15:00","20:00"]],quem:hpQuem.sqs||[],feriado:false},
   {id:"dom",dias:[0],turnos:[["14:00","20:00"]],quem:hpQuem.dom||[],feriado:true}];
 let padEdit=null;
-const grupos=()=>padEdit||(Array.isArray(cfg.padrao)&&cfg.padrao.length?cfg.padrao:PADRAO_INICIAL());
+const turnoArr=t=>Array.isArray(t)?t:String(t).split("-");
+const lerPadrao=gs=>gs.map(g=>({...g,dias:[...(g.dias||[])],quem:[...(g.quem||[])],turnos:(g.turnos||[]).map(turnoArr)}));
+const paraSalvar=gs=>gs.map(g=>({id:g.id,dias:g.dias,feriado:!!g.feriado,quem:g.quem||[],turnos:g.turnos.map(t=>turnoArr(t).join("-"))}));
+const grupos=()=>padEdit||(Array.isArray(cfg.padrao)&&cfg.padrao.length?lerPadrao(cfg.padrao):PADRAO_INICIAL());
 const DIAS_NOME=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
 function nomeGrupo(gr){
   const d=[...gr.dias].sort((a,b)=>(a||7)-(b||7)).map(w=>DIAS_NOME[w]);
@@ -860,7 +864,7 @@ function seletorGrupo(g){
 async function definirQuem(id,arr){
   if(padEdit){const g=padEdit.find(x=>x.id===id);if(g)g.quem=arr;render();return}
   const novo=grupos().map(g=>g.id===id?{...g,quem:arr}:g);
-  await run(()=>updateDoc(doc(fs,"config","geral"),{padrao:novo}));
+  await run(()=>updateDoc(doc(fs,"config","geral"),{padrao:paraSalvar(novo)}));
 }
 // Mês escolhido em "Gerar para" (padrão: o mês que está nas setas).
 const mesGerar=()=>hpMeses&&hpMeses>=hojeStr.slice(0,7)?hpMeses:(mes>=hojeStr.slice(0,7)?mes:hojeStr.slice(0,7));
@@ -1440,7 +1444,7 @@ async function act(a,ds){
     case "peadd":padEdit.push({id:"g"+Date.now().toString(36),dias:[],turnos:[],quem:[],feriado:false});break;
     case "pedel":padEdit.splice(+ds.i,1);break;
     case "pesalvar":{const novo=padEdit.filter(g=>g.dias.length||g.feriado);if(novo.some(g=>!g.turnos.length)){toast("Cada linha precisa de pelo menos um turno (ou exclua a linha).");break}
-      padEdit=null;hpAberto=null;return run(()=>updateDoc(doc(fs,"config","geral"),{padrao:novo}),"Padrão salvo. Ele vale para os próximos meses que você gerar.")}
+      padEdit=null;hpAberto=null;return run(()=>updateDoc(doc(fs,"config","geral"),{padrao:paraSalvar(novo)}),"Padrão salvo. Ele vale para os próximos meses que você gerar.")}
     case "distrib":{const k=ds.k,n=new Set(distribui);n.has(k)?n.delete(k):n.add(k);return run(()=>setDoc(doc(fs,"publico","distribui"),{imobs:[...n]}),`${nomeParc(k)}: ${n.has(k)?"agora o gestor distribui os horários":"os corretores voltam a escolher"}.`)}
     case "aprovar":{const u=ds.uid,x=solicitacoes.get(u);if(!x)return;
       return run(async()=>{const b=writeBatch(fs);
