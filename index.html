@@ -587,7 +587,7 @@ function viewMinhas(){
   const ms=minhas(),prox=ms.filter(v=>v.data>=hojeStr),pas=ms.filter(v=>v.data<hojeStr);
   const totH=prox.reduce((a,v)=>a+hrs(v),0),hr=new Date().getHours();
   const saud=hr<12?"Bom dia":hr<18?"Boa tarde":"Boa noite",nome=(perfil&&perfil.nome||"").split(" ")[0];
-  let h=`<section class="vg-ola"><h2>${saud}${nome?`, ${esc(nome)}`:""}.</h2><span class="vg-traco" aria-hidden="true"></span><p>Aqui está sua agenda de plantões.</p></section>${avisoGestorDistribui(true)}`;
+  let h=`<section class="vg-ola"><h2>${saud}${nome?`, ${esc(nome)}`:""}.</h2><span class="vg-traco" aria-hidden="true"></span><p>Aqui está sua agenda de plantões.</p></section>`;
   h+=`<section class="vg-secao"><div class="vg-cab"><div><span class="vg-eyebrow">Seus próximos plantões</span><span class="vg-resumo">${prox.length} ${prox.length===1?"plantão":"plantões"} · ${totH}h</span></div>
   ${prox.length?`<button class="vg-btn-sec" data-act="icstodos">${ICONES.escala}Incluir todos no Calendário</button>`:""}</div>`;
   h+=prox.length?`<div class="vg-lista">${prox.map(v=>cardPlantao(v,false)).join("")}</div>
