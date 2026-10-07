@@ -126,6 +126,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .pm-txt b{font-family:var(--display);font-size:1.1rem}
 .proxmes.on{border:1px solid var(--ok);background:var(--okbg)}
 .proxmes.on h2,.proxmes.on p{color:var(--fg)}
+.orient{padding:12px 16px}
+.orient h2{font-size:1rem}
+.orient-corpo{display:grid;gap:4px}
+.orient h3{font-family:var(--display);font-size:.92rem;margin:8px 0 0;color:var(--fg)}
+.orient ul{margin:0;padding-left:18px;display:grid;gap:3px;color:var(--muted);font-size:.9rem}
+.orient .fecho{margin:10px 0 0;font-style:italic;color:var(--fg);font-size:.9rem}
 .sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
 .login-head p{color:var(--sky)}
 .login .link{color:var(--sky)}
@@ -478,7 +484,7 @@ function viewMinhas(){
   h+=prox.length?agenda(prox,{mine:1,showMes:1}):`<div class="vazio"><b>Você ainda não tem plantões marcados</b><span>Quando o gestor liberar dias para você, escolha seus horários em “Escolher horários”.</span></div>`;
   const _fim=cardProximoMes();
   if(pas.length)h+=`<button class="btn sm quiet" data-act="passados" style="justify-self:start">${verPassados?"Ocultar":"Ver"} plantões anteriores (${pas.length})</button>${verPassados?agenda([...pas].reverse(),{showMes:1}):""}`;
-  return h+_fim;
+  return h+_fim+cardOrientacoes();
 }
 function viewEscolher(){
   const L=libDe(me.uid,mes);
@@ -1071,6 +1077,23 @@ function formAjusteCi(v){
   <button class="btn sm danger" type="button" data-act="ajcinao" data-id="${v.id}" ${ocupado?"disabled":""}>Marcar como não feito</button>
   <span class="why">A presença passa a contar com estes horários. Fica registrado como ajuste da coordenação.</span></form>`;
 }
+// Orientações do plantão: um tópico por linha, editadas pela coordenação em Ajustes.
+// Orientações do plantão, editadas pela coordenação em Ajustes.
+// Formato: "## Título" abre um tema; "> texto" é a frase de fechamento; as outras linhas são tópicos.
+const ORIENT_PADRAO=`## Maquete\nÉ proibido tocar na maquete. Oriente curiosos e crianças com educação, sem abrir exceção.\nA iluminação da maquete fica ligada somente no período noturno, para valorizar a exposição do empreendimento.\nO último plantonista do dia desliga a maquete e a tela interativa e guarda todo o material.\n## Registro de atendimento\nTodo atendimento no stand deve ser lançado no CVCRM, na mídia “Stand do Shopping”. Sem registro, não há atendimento para efeito de comissão e histórico.\n## Organização do espaço\nO stand é de uso coletivo: deixe-o limpo, organizado e pronto para o próximo colega.\nEm saídas rápidas, guarde os itens e desligue a tela interativa para evitar curiosos.\n## Vestimenta\nVocê representa a nossa marca. Sem a camisa da marca, use a paleta CAC: preto, azul e branco.\nUse sempre o crachá do CRECI.\n> Contamos com o profissionalismo de cada um. Bom plantão e boas vendas!`;
+const orientacoes=()=>String(cfg.orientacoes??ORIENT_PADRAO).split("\n").map(x=>x.trim()).filter(Boolean);
+function cardOrientacoes(){
+  const it=orientacoes();if(!it.length)return "";
+  let corpo="",aberta=false;
+  const fecha=()=>{if(aberta){corpo+="</ul>";aberta=false}};
+  for(const l of it){
+    if(l.startsWith("## ")){fecha();corpo+=`<h3>${esc(l.slice(3))}</h3>`}
+    else if(l.startsWith("> ")){fecha();corpo+=`<p class="fecho">${esc(l.slice(2))}</p>`}
+    else{if(!aberta){corpo+="<ul>";aberta=true}corpo+=`<li>${esc(l)}</li>`}
+  }
+  fecha();
+  return `<section class="card dobra-card orient" data-dobra="orient"><h2>Orientações do Plantão</h2><div class="orient-corpo">${corpo}</div></section>`;
+}
 let logoPngCache=null;
 function logoPng(){
   if(logoPngCache)return Promise.resolve(logoPngCache);
@@ -1112,6 +1135,10 @@ function viewAjustes(){
   <div class="field" style="align-self:center"><label class="check"><input type="checkbox" id="cf-des" ${dval("cf-des",cfg.desistir!==false)?"checked":""}> Corretor pode desistir enquanto a escala estiver em aberto</label></div>
   <div class="field wide"><label for="cf-av">Aviso para os corretores</label><textarea id="cf-av" maxlength="400" placeholder="Ex.: Escolha seus dias até sexta, 18h.">${esc(dval("cf-av",cfg.aviso||""))}</textarea></div>
   <div class="field"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Salvar ajustes</button></div></form></section>`;
+  h+=`<section class="card dobra-card" data-dobra="orientedit"><h2>Orientações do Plantão</h2>
+  <form class="stack" data-form="orient"><label for="or-txt">Um tópico por linha. Use “## ” no começo da linha para um título (ex.: ## Vestimenta) e “> ” para a frase final. Aparece no final da Visão Geral dos corretores.</label>
+  <textarea id="or-txt" style="min-height:130px">${esc(dval("or-txt",orientacoes().join("\n")))}</textarea>
+  <div class="row"><button class="btn sec" type="submit" ${ocupado?"disabled":""}>Salvar orientações</button></div></form></section>`;
   h+=cardLocalStand();
   h+=`<section class="card dobra-card" data-dobra="imobs"><h2>Imobiliárias</h2><p class="note">Aparecem na tela de entrada dos corretores. Clique em uma para renomear: os corretores e plantões dela continuam ligados, e ninguém perde o acesso.</p>
   <div class="row">${imobs.map(p=>editImob===p.k?`<form class="row" data-form="renparc" data-k="${esc(p.k)}"><input type="text" id="rn-nome" maxlength="40" style="width:auto" value="${esc(dval("rn-nome",p.nome))}" aria-label="Novo nome de ${esc(p.nome)}"><button class="btn sm" type="submit">Salvar</button><button class="btn sm quiet" type="button" data-act="renparc" data-k="">Cancelar</button>
@@ -1474,6 +1501,8 @@ async function submit(form){
     const ts=h=>Timestamp.fromDate(quando(v.data,h)),quemAj=me.email||"coordenação";
     await run(()=>updateDoc(doc(fs,"vagas",id),{checkin:{em:ts(a),dist:null,prec:null,manual:true,por:quemAj},checkout:b?{em:ts(b),dist:null,prec:null,manual:true,por:quemAj}:null}),"Check-in ajustado.");
     ajusteCi=null;delete drafts["aj-in"];delete drafts["aj-out"];render()}
+  else if(f==="orient"){const t=document.getElementById("or-txt").value.split("\n").map(x=>x.trim()).filter(Boolean).join("\n");
+    await run(()=>updateDoc(doc(fs,"config","geral"),{orientacoes:t}),"Orientações salvas.");delete drafts["or-txt"];render()}
   else if(f==="stand"){const c=g("sd-coord").split(/[,;\s]+/).filter(Boolean).map(Number),raio=Math.max(30,parseInt(g("sd-raio"))||150),tol=Math.max(0,parseInt(g("sd-tol"))||0);
     let stand=cfg.stand||null;
     if(c.length===2&&c.every(x=>isFinite(x))&&Math.abs(c[0])<=90&&Math.abs(c[1])<=180)stand={lat:c[0],lng:c[1],raio};
