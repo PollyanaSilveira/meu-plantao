@@ -946,6 +946,7 @@ const ICONES={
   liberar:IC('<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4M8.5 14.5l2.2 2.2 4.8-4.7"/>'),
   relatorios:IC('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>'),
   ajustes:IC('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'),
+  calgestor:IC('<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4M7.5 13h3M13.5 13h3M7.5 16.5h3"/>'),
   meuscor:IC('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.6c2.3.2 4 1.8 4.5 4.9"/>'),
   minhas:IC('<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>'),
   escolher:IC('<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4M12 12.5v5M9.5 15h5"/>'),
@@ -1076,6 +1077,21 @@ function paraImob(v){
   return !ex.includes(gImob)&&imobs.filter(x=>x.k!==gImob).every(x=>ex.includes(x.k));
 }
 const diasImob=(k,m)=>(libsImob.get(`${k}_${m}`)?.dias)||[];
+// Gestor de imobiliária: o mês da imobiliária em calendário.
+function viewCalGestor(){
+  const liberados=diasImob(gImob,mes),lista=doMes(mes).filter(v=>(liberados.includes(v.data)&&paraImob(v))||(v.corretorId&&perfis.has(v.corretorId)));
+  const preenc=lista.filter(v=>v.corretorId).length,livres=lista.filter(v=>livre(v)).length;
+  let h=`<div class="toolbar">${mesNav()}<span class="note">${preenc} preenchidos · ${livres} livres</span></div>`;
+  if(!lista.length)return h+`<div class="vazio"><b>Nenhum plantão da ${esc(nomeParc(gImob))} em ${mesMin(mes)}</b><span>Quando a coordenação liberar os dias, eles aparecem aqui.</span></div>`;
+  h+=`<section class="cal" aria-label="Calendário de ${nomeMes(mes)}">${gradeDias((ds,d)=>{
+    const r=lista.filter(v=>v.data===ds);
+    const tags=r.map(v=>{const isL=livre(v),nm=isL?"Livre":(quem(v)||"—");
+      return `<button class="tag ${isL?"verde":"st-futuro"}" data-act="irdist" data-id="${v.id}" title="${esc(nm)} · ${esc(v.ini)} às ${esc(v.fim)}"><span class="th">${esc(v.ini)}–${esc(v.fim)}</span><span class="tn">${esc(nm)}</span></button>`}).join("");
+    return `<div class="day ${r.length?"has":""}"><div class="num">${pad(d)}${ehFeriado(ds)?'<span class="fer">FERIADO</span>':""}</div>${tags}</div>`;
+  })}</section>
+  <div class="row legenda"><span class="leg"><span class="leg-cor st-futuro"></span>Com corretor</span><span class="leg"><span class="leg-cor" style="background:var(--ok)"></span>Livre (dia liberado)</span><span class="why">Toque num plantão para escolher ou trocar o corretor.</span></div>`;
+  return h;
+}
 function viewMeusCorretores(){
   const cors=[...perfis.entries()].sort((a,b)=>a[1].nome.localeCompare(b[1].nome)),at=cors.filter(([,p])=>ativoNoMes(p,mes)).length;
   let h=`<div class="toolbar">${mesNav()}<span class="note">${at} de ${cors.length} ativos em ${mesMin(mes)}</span></div>`;
@@ -1098,7 +1114,7 @@ function viewDistribuir(){
   const dias=[...new Set(lista.map(v=>v.data))].sort();
   h+=dias.map(d=>`<article class="item ${d<hojeStr?"past":""}"><div class="date"><b>${pad(dnum(d))}</b><span>${DOW[dowOf(d)]}</span></div><div class="slots">${lista.filter(v=>v.data===d).map(v=>{
     const p=v.checkin?presenca(v):null;
-    return `<div class="slot"><span class="hr">${esc(v.ini)} às ${esc(v.fim)}</span>${v.local?`<span class="loc">${esc(v.local)}</span>`:""}
+    return `<div class="slot" id="d-${v.id}"><span class="hr">${esc(v.ini)} às ${esc(v.fim)}</span>${v.local?`<span class="loc">${esc(v.local)}</span>`:""}
     <span class="acts">${liberados.includes(d)||(v.corretorId&&perfis.has(v.corretorId))?`<select id="dist-${v.id}" aria-label="Corretor de ${ddmm(d)} ${esc(v.ini)}" style="width:auto;min-width:16ch" ${d<hojeStr||ocupado?"disabled":""}>${opc(v)}</select>`:`<span class="nm" style="font-weight:700">${esc(quem(v)||"—")}</span><span class="why">definido pela coordenação</span>`}</span>${p?`<span style="flex-basis:100%">${pillPres(p)}</span>`:""}</div>`}).join("")}</div></article>`).join("");
   const cont=cors.map(([u,p])=>({p,n:lista.filter(v=>v.corretorId===u).length})).filter(x=>x.n||ativoNoMes(x.p,mes));
   h+=`<section class="card dobra-card" data-dobra="dist-cont"><h2>Plantões por corretor em ${mesMin(mes)}</h2><div class="tablewrap"><table><thead><tr><th>Corretor</th><th>Plantões</th></tr></thead><tbody>${cont.map(x=>`<tr><td>${esc(x.p.nome)}</td><td class="n">${x.n}</td></tr>`).join("")}</tbody></table></div></section>`;
@@ -1294,12 +1310,12 @@ function render(){
   else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
   else{
     const T=isAdmin?[["checkin","Check-in"],["escala","Escala"],["horarios","1. Horários"],["liberar","2. Liberar horários"],["relatorios","3. Relatórios"],["corretores","Corretores",solicitacoes.size?`${perfis.size} · ${solicitacoes.size} pedido${solicitacoes.size>1?"s":""}`:perfis.size],["ajustes","Ajustes"]]
-      :isGestor?[["distribuir","Distribuir horários"],["meuscor","Meus corretores",perfis.size],["checkin","Check-in"]]
+      :isGestor?[["distribuir","Distribuir horários"],["calgestor","Calendário"],["meuscor","Meus corretores",perfis.size],["checkin","Check-in"]]
       :[["minhas","Visão geral"],["checkin","Check-in"],...(distribui.has(perfil.parceiro)?[]:[["escolher","Horários"]]),["escala","Calendário"]];
     const nome=isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome.split(" ")[0]);
     const sub=(isAdmin||isGestor)?esc(me.email||""):esc(nomeParc(perfil.parceiro));
     const ini=(isAdmin||isGestor)?"G":esc(perfil.nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase());
-    const corpo=tab==="meuscor"?viewMeusCorretores():tab==="distribuir"?viewDistribuir():tab==="checkin"?((isAdmin||isGestor)?viewCheckinGestor():viewCheckinCorretor()):tab==="minhas"?viewMinhas():tab==="escolher"?viewEscolher():tab==="escala"?viewEscala():tab==="liberar"?viewLiberar():tab==="horarios"?viewHorarios():tab==="corretores"?viewCorretores():tab==="relatorios"?viewRelatorios():viewAjustes();
+    const corpo=tab==="calgestor"?viewCalGestor():tab==="meuscor"?viewMeusCorretores():tab==="distribuir"?viewDistribuir():tab==="checkin"?((isAdmin||isGestor)?viewCheckinGestor():viewCheckinCorretor()):tab==="minhas"?viewMinhas():tab==="escolher"?viewEscolher():tab==="escala"?viewEscala():tab==="liberar"?viewLiberar():tab==="horarios"?viewHorarios():tab==="corretores"?viewCorretores():tab==="relatorios"?viewRelatorios():viewAjustes();
     h=`<div class="wrap"><header class="top"><div class="marca-nome">${LOGO}<span class="sep" aria-hidden="true"></span><h1>Meu Plantão</h1></div>
     <div class="who">${!isAdmin&&!isGestor?`<button class="tema-btn" data-act="tema" aria-pressed="${noturno}" aria-label="${noturno?"Usar modo claro":"Usar modo noturno"}" title="${noturno?"Modo claro":"Modo noturno"}">${noturno?"☀":"☾"}</button>`:""}<span class="pill ${cfg.aberta?"ok":"warn"}">${cfg.aberta?"Escala em aberto":"Escala fechada"}</span>
     <div class="usermenu"><button class="userbtn" data-act="menu" aria-haspopup="menu" aria-expanded="${menuAberto}"><span class="av">${ini}</span><span class="nm">${nome}</span>${ICONES.seta}</button>
@@ -1367,6 +1383,7 @@ async function act(a,ds){
     case "limpaexc":return run(()=>updateDoc(doc(fs,"vagas",ds.id),{excetoImob:[],excetoCor:[]}),"Exceções removidas.");
     case "lbdow":{const w=+ds.w;lbDow.has(w)?lbDow.delete(w):lbDow.add(w);break}
     case "tema":noturno=!noturno;menuAberto=false;try{localStorage.setItem("mp-tema",noturno?"noturno":"claro")}catch(x){}break;
+    case "irdist":{tab="distribuir";render();setTimeout(()=>{const el=document.getElementById("d-"+ds.id);if(el){el.scrollIntoView({block:"center",behavior:"smooth"});el.style.background="var(--hlbg)";document.getElementById("dist-"+ds.id)?.focus()}},60);return}
     case "orientcat":orientCat=+ds.i;break;
     case "lbcorabrir":lbCorAberto.has(ds.k)?lbCorAberto.delete(ds.k):lbCorAberto.add(ds.k);break;
     case "lbsel":lbSel.has(ds.k)?lbSel.delete(ds.k):lbSel.add(ds.k);break;
