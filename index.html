@@ -517,7 +517,7 @@ function viewLogin(){
       <button class="btn lg" type="submit" ${ocupado?"disabled":""}>Enviar cadastro para aprovação</button>
       <button class="link" type="button" data-act="pedir" data-v="0">Já tenho acesso</button></form>
       <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
-      return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div>${corpo}</div></div>`;
+      return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão</p></div>${corpo}</div></div>`;
     }
     corpo=`<form class="card stack" data-form="gestor"><h2>${gestorNovo?"Criar acesso da coordenação":loginModo==="imob"?"Acesso da imobiliária":"Acesso da coordenação"}</h2>
     ${gestorNovo?`<p class="note">Use só na primeira vez, para configurar o sistema. Depois disso, novas contas de gestor não são aceitas.</p>`:""}
@@ -530,7 +530,7 @@ function viewLogin(){
     ${loginModo==="gestor"?`<button class="link" type="button" data-act="gestornovo">${gestorNovo?"Já tenho acesso":"Primeira vez? Criar acesso da coordenação"}</button>`:""}</form>
     <p style="text-align:center"><button class="link" data-act="modo" data-v="escolha">Voltar</button></p>`;
   }
-  return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div>${corpo}</div></div>`;
+  return `<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão</p></div>${corpo}</div></div>`;
 }
 
 /* ---------- partes da escala ---------- */
@@ -1346,8 +1346,8 @@ function render(){
     h=`<div class="login boasvindas" role="status" aria-live="polite"><div class="login-head">${SIMBOLO}<h1>Seja bem-vindo(a)${nm?",":""}</h1>${nm?`<p class="bv-nome">${esc(nm)}</p>`:""}<span class="divisor" aria-hidden="true" style="margin-top:14px"></span><p class="local">Carregando seus plantões…</p></div></div>`}
   else if(fase==="login"||fase==="semconfig")h=viewLogin();
   else if(fase==="carregando")h=`<div class="login"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="local">Carregando…</p></div></div>`;
-  else if(fase==="pendente")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card stack"><h2>Cadastro em análise</h2><p>Seu cadastro como gestor da <b>${esc(nomeParc(pedido&&pedido.imob))}</b> foi enviado. Assim que a coordenação aprovar, esta tela abre sozinha.</p><button class="btn quiet" data-act="sair">Sair</button></div></div></div>`;
-  else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão.</p></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
+  else if(fase==="pendente")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão</p></div><div class="card stack"><h2>Cadastro em análise</h2><p>Seu cadastro como gestor da <b>${esc(nomeParc(pedido&&pedido.imob))}</b> foi enviado. Assim que a coordenação aprovar, esta tela abre sozinha.</p><button class="btn quiet" data-act="sair">Sair</button></div></div></div>`;
+  else if(fase==="semperfil")h=`<div class="login"><div class="login-box"><div class="login-head">${LOGO}<span class="divisor" aria-hidden="true"></span><h1>Meu Plantão</h1><p class="tagline">Em alto padrão</p></div><div class="card"><p>Esta conta não tem cadastro de corretor nem de gestor.</p><button class="btn" data-act="sair">Sair</button></div></div></div>`;
   else{
     const T=isAdmin?[["checkin","Check-in"],["escala","Escala"],["horarios","1. Horários"],["liberar","2. Liberar horários"],["relatorios","3. Relatórios"],["corretores","Corretores",solicitacoes.size?`${perfis.size} · ${solicitacoes.size} pedido${solicitacoes.size>1?"s":""}`:perfis.size],["ajustes","Ajustes"]]
       :isGestor?[["distribuir","Distribuir horários"],["calgestor","Calendário"],["meuscor","Meus corretores",perfis.size],["checkin","Check-in"]]
