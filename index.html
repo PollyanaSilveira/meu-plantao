@@ -690,7 +690,7 @@ function viewLiberar(){
       if(!cs.length)return `<div class="linha-imob"><span class="sw" style="${cores(x.k)}"></span><b>${esc(x.nome)}</b><span class="note">${distribui.has(x.k)?"o gestor distribui":"sem corretores ativos"}</span></div>`;
       return `<div class="linha-imob"><span class="sw" style="${cores(x.k)}"></span><b>${esc(x.nome)}</b><span class="note">${marc} de ${cs.length}</span><button class="link" data-act="lbcorabrir" data-k="${esc(x.k)}">${ab?"fechar":"alterar"}</button></div>
       ${ab?`<div class="row" style="padding:2px 0 8px 18px">${cs.map(({uid,p})=>`<label class="check" style="font-weight:600;min-width:12ch"><input type="checkbox" data-act="lbcor" data-uid="${uid}" ${lbFora.has(uid)?"":"checked"}> ${esc(p.nome)}</label>`).join("")}<button class="link" data-act="lbtodos" data-k="${esc(x.k)}">${marc===cs.length?"desmarcar todos":"marcar todos"}</button></div>`:""}`}).join(""):`<span class="note">Escolha as imobiliárias no passo 1.</span>`;
-    const p3=`<div class="row">${[1,2,3,4,5,6,0].map(w=>`<button class="chip" data-act="lbdow" data-w="${w}" aria-pressed="${lbDow.has(w)}">${DOW[w]}</button>`).join("")}</div>`;
+    const p3=`<div class="row">${[1,2,3,4,5,6,0].map(w=>`<button class="chip" data-act="lbdow" data-w="${w}" aria-pressed="${lbDow.has(w)}">${DOW[w]}</button>`).join("")}</div>${lbSel.size?`<span class="why">Pré-marcados pelo padrão da etapa 1. Ajuste se precisar.</span>`:""}`;
     const p4=`<div class="row"><span>Até</span><input type="number" id="lb-blim" min="1" max="31" style="width:5em" value="${esc(dval("lb-blim","4"))}" aria-label="Limite de plantões por corretor"><span>plantões por corretor</span></div>`;
     const f=fechadosLote();
     const avisos=[...dist.map(k=>{const dd=diasImob(k,mes);return `${esc(nomeParc(k))}: o gestor distribui${dd.length?` · ${dd.length} dias já liberados <button class="link" data-act="libimobdel" data-k="${esc(k)}">remover</button>`:""}`}),
@@ -861,6 +861,15 @@ function textoGrupo(id){
   return "Só "+sel.map(nomeParc).join(", ");
 }
 const textoGrupoDe=(gs,id)=>{const g=gs.find(x=>x.id===id),q=(g?.quem||[]);if(q.includes(NENHUMA))return "nenhuma imobiliária";const l=q.filter(k=>parc(k));return !l.length||l.length===imobs.length?"todas as imobiliárias":l.map(nomeParc).join(", ")};
+function diasDoPadrao(sel){
+  const ws=new Set();
+  for(const g of grupos()){
+    const q=g.quem||[];if(q.includes(NENHUMA))continue;
+    const l=q.filter(k=>parc(k)),todas=!l.length||l.length===imobs.length;
+    if([...sel].some(k=>todas||l.includes(k)))g.dias.forEach(w=>ws.add(w));
+  }
+  return ws;
+}
 const mesmaRegra=(v,r)=>(v.restrito||"")===r.restrito&&[...(v.excetoImob||[])].sort().join()===[...r.excetoImob].sort().join();
 function seletorGrupo(g){
   const nenhuma=nenhumaDe(g),lst=quemDe(g),todas=!nenhuma&&(!lst.length||lst.length===imobs.length),sel=new Set(nenhuma?[]:todas?imobs.map(x=>x.k):lst);
@@ -1407,8 +1416,8 @@ async function act(a,ds){
     case "irdist":{tab="distribuir";render();setTimeout(()=>{const el=document.getElementById("d-"+ds.id);if(el){el.scrollIntoView({block:"center",behavior:"smooth"});el.style.background="var(--hlbg)";document.getElementById("dist-"+ds.id)?.focus()}},60);return}
     case "orientcat":orientCat=+ds.i;break;
     case "lbcorabrir":lbCorAberto.has(ds.k)?lbCorAberto.delete(ds.k):lbCorAberto.add(ds.k);break;
-    case "lbsel":lbSel.has(ds.k)?lbSel.delete(ds.k):lbSel.add(ds.k);break;
-    case "lbselall":{const ks=imobs.map(x=>x.k);const todas=ks.every(k=>lbSel.has(k));ks.forEach(k=>todas?lbSel.delete(k):lbSel.add(k));break}
+    case "lbsel":lbSel.has(ds.k)?lbSel.delete(ds.k):lbSel.add(ds.k);lbDow=diasDoPadrao(lbSel);break;
+    case "lbselall":{const ks=imobs.map(x=>x.k);const todas=ks.every(k=>lbSel.has(k));ks.forEach(k=>todas?lbSel.delete(k):lbSel.add(k));lbDow=diasDoPadrao(lbSel);break}
     case "lbtodos":{const us=[...perfis.entries()].filter(([,p])=>p.parceiro===ds.k&&ativoNoMes(p,mes)).map(([u])=>u);const todos=us.every(u=>!lbFora.has(u));us.forEach(u=>todos?lbFora.add(u):lbFora.delete(u));break}
     case "lbcor":lbFora.has(ds.uid)?lbFora.delete(ds.uid):lbFora.add(ds.uid);break;
     case "libimobdel":{const k=ds.k;return run(()=>deleteDoc(doc(fs,"liberacoesImob",`${k}_${mes}`)),`Dias da ${nomeParc(k)} em ${mesMin(mes)} removidos. O gestor dela não distribui mais nesses dias.`)}
