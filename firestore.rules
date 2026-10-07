@@ -80,7 +80,10 @@ service cloud.firestore {
       allow create: if isAdmin()
         && request.resource.data.keys().hasOnly(['nome', 'parceiro', 'key', 'ano', 'inativos', 'plantao', 'criadoEm'])
         && request.resource.data.nome is string && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 60;
-      allow update, delete: if isAdmin();
+      allow delete: if isAdmin();
+      // Gestor de imobiliária: ativa/desativa por mês os corretores da imobiliária dele.
+      allow update: if isAdmin() || (gestorImob() && resource.data.parceiro == imobG()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['inativos']));
     }
 
     // Dias liberados para cada corretor em cada mês (id = uid_AAAA-MM).
@@ -139,13 +142,18 @@ service cloud.firestore {
       function checkout() { return resource.data.get('checkin', null) != null && ponto('checkout'); }
       // Gestor de imobiliária: coloca, troca ou tira corretores da imobiliária dele nos horários abertos para ela.
       function doGestor(uid) { return uid == null || get(/databases/$(database)/documents/perfis/$(uid)).data.parceiro == imobG(); }
+      // a) horário livre da imobiliária num dia liberado pela coordenação, ou
+      // b) plantão que já é de um corretor da imobiliária (o gestor troca ou tira).
+      function diaLiberado() {
+        return (resource.data.get('restrito', '') == imobG()
+              || (resource.data.get('restrito', '') == '' && !resource.data.get('excetoImob', []).hasAny([imobG()])))
+          && resource.data.get('aberta', false) == true
+          && exists(/databases/$(database)/documents/liberacoesImob/$(imobG() + '_' + resource.data.mes))
+          && get(/databases/$(database)/documents/liberacoesImob/$(imobG() + '_' + resource.data.mes)).data.dias.hasAny([resource.data.data]);
+      }
       function atribuir() {
         return gestorImob() && so(['corretorId', 'escolhidoEm'])
-          && (resource.data.get('restrito', '') == imobG()
-              || (resource.data.get('restrito', '') == '' && !resource.data.get('excetoImob', []).hasAny([imobG()])))
-          && (resource.data.get('aberta', false) == true || resource.data.corretorId != null)
-          && exists(/databases/$(database)/documents/liberacoesImob/$(imobG() + '_' + resource.data.mes))
-          && get(/databases/$(database)/documents/liberacoesImob/$(imobG() + '_' + resource.data.mes)).data.dias.hasAny([resource.data.data])
+          && (diaLiberado() || resource.data.corretorId != null)
           && doGestor(resource.data.corretorId) && doGestor(request.resource.data.corretorId);
       }
       allow update: if isAdmin() || escolher() || desistir() || checkin() || checkout() || atribuir();
