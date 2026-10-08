@@ -238,6 +238,83 @@ body.corretor .orient ul{font-size:.9rem;line-height:1.55}
 .aviso-gestor>div{display:grid;gap:2px}
 .aviso-gestor>div span{color:var(--muted)}
 .aviso-ic{width:22px;height:22px;display:grid;place-items:center;font-size:.95rem;flex:none;margin-top:-1px}
+/* ===== Coordenação: acabamento do topo, menu e fundo ===== */
+body.coord{--navy:#0B1B36;--bg:#F7F8FA;--surface:#FFFFFF;--fg:#18263D;--muted:#667085;--line:#E3E7ED;--soft:#F2F4F7;--ok:#2E8B68;--okbg:#E5F2EC;--accent:#0B1B36;--accent-fg:#FFFFFF;--hlbg:#EEF2F8;color-scheme:light}
+body.coord .marca{opacity:.025;right:-38vmin;bottom:-42vmin}
+body.coord .top{padding:14px 22px;border-radius:14px;min-height:60px}
+body.coord .top h1{font-size:1.3rem;color:#fff;letter-spacing:.005em}
+body.coord .top .pill{background:rgba(46,139,104,.18);color:#8BD9B6}
+body.coord .tabs{gap:4px;border-bottom:1px solid var(--line)}
+body.coord .tab{color:var(--muted);font-weight:500;background:none;border-radius:0;padding:12px 12px}
+body.coord .tab:hover{background:none;color:var(--fg)}
+body.coord .tab svg{opacity:.55}
+body.coord .tab[aria-selected="true"]{color:var(--navy);font-weight:700;border-bottom:2px solid var(--navy)}
+body.coord .tab[aria-selected="true"] svg{opacity:1}
+body.coord .tab .n{background:var(--soft);color:var(--muted);font-weight:600}
+body.coord .tab[aria-selected="true"] .n{background:var(--navy);color:#fff}
+/* ===== Aba Corretores ===== */
+.pg-cab{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;padding:4px 0}
+body.tela-corretores .mesnav{gap:6px}
+body.tela-corretores .mesnav b{font-size:1.2rem;min-width:8.5ch}
+body.tela-corretores .iconbtn{width:30px;height:30px;border-radius:8px;border-color:var(--line);font-size:.95rem;transition:background .15s,border-color .15s}
+body.tela-corretores .iconbtn:hover{background:var(--soft);border-color:#CBD2DC}
+.pg-resumo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:.85rem}
+.pg-resumo b{color:var(--fg);font-variant-numeric:tabular-nums}
+.pg-sep{color:#C3CAD5}
+body.tela-corretores .card{border-color:var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(11,27,54,.03)}
+.gi-card{padding:22px 24px;gap:16px}
+.gi-cab{display:flex;gap:14px;align-items:flex-start}
+.gi-cab>div{display:grid;gap:4px}
+.gi-ic{width:36px;height:36px;border-radius:10px;background:var(--hlbg);color:var(--navy);display:grid;place-items:center;flex:none}
+.gi-ic svg{width:18px;height:18px}
+.gi-cab h2{font-size:1.12rem;display:flex;align-items:center;gap:8px}
+.gi-num{font-family:var(--body);font-size:.72rem;font-weight:700;background:var(--soft);color:var(--muted);border-radius:999px;padding:2px 9px}
+.gi-lista{display:grid;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.gi-linha{display:grid;grid-template-columns:44px minmax(150px,1.1fr) 150px minmax(0,1.6fr) auto;align-items:center;gap:10px 14px;padding:11px 16px;background:var(--surface);transition:background .2s}
+.gi-linha+.gi-linha{border-top:1px solid var(--line)}
+.gi-linha:hover{background:#FAFBFC}
+.gi-linha.is-on{background:#F3F9F6}
+.gi-nome{display:flex;align-items:center;gap:9px;min-width:0}
+.gi-nome .sw{width:8px;height:8px;background:var(--k);flex:none}
+.gi-nome b{font-weight:700;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gi-status{font-size:.8rem;color:var(--muted);font-weight:500}
+.gi-status.on{justify-self:start;background:var(--okbg);color:var(--ok);font-weight:700;border-radius:999px;padding:3px 10px}
+.gi-quem{display:flex;flex-wrap:wrap;gap:4px 14px;min-width:0;font-size:.84rem}
+.gi-gestor{display:flex;flex-wrap:wrap;gap:0 6px;min-width:0}
+.gi-gestor b{color:var(--fg);font-weight:600}
+.gi-gestor span{color:var(--muted);overflow-wrap:anywhere}
+.gi-sem{color:#98A2B3}
+.gi-acoes{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.gi-btn-sec{font:inherit;font-size:.8rem;font-weight:600;background:var(--surface);color:#475467;border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.gi-btn-sec:hover{border-color:#B9C1CC;color:var(--fg);background:var(--soft)}
+.gi-link{font:inherit;font-size:.8rem;background:none;border:0;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.gi-conf{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--fg);flex-wrap:wrap}
+body.coord .switch{width:38px;height:22px;background:#E4E7EC;transition:background .2s}
+body.coord .switch .knob{width:16px;height:16px;top:3px;left:3px;box-shadow:0 1px 2px rgba(16,24,40,.2);transition:left .2s}
+body.coord .switch[aria-checked="true"]{background:var(--ok)}
+body.coord .switch[aria-checked="true"] .knob{left:19px}
+.gi-form{display:grid;gap:14px;background:#F2F8F5;border:1px solid #DCEBE3;border-radius:14px;padding:18px 20px}
+.gi-form-cab{display:flex;gap:12px;align-items:flex-start}
+.gi-form-cab>div{display:grid;gap:2px}
+.gi-form-cab b{color:var(--fg);font-size:.98rem}
+.gi-form-cab span{color:var(--muted);font-size:.84rem}
+.gi-mais{width:28px;height:28px;border-radius:50%;background:var(--surface);border:1px solid #CFE3D8;color:var(--ok);display:grid;place-items:center;font-weight:700;flex:none}
+.gi-campos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px}
+.gi-campos label{font-size:.75rem;font-weight:600;color:#475467;letter-spacing:.01em}
+.gi-form .gi-campos input,.gi-form .gi-campos select{background:var(--surface);border:1px solid #D5DBE3;border-radius:9px;padding:10px 12px;transition:border-color .15s,box-shadow .15s}
+.gi-campos input::placeholder{color:#98A2B3}
+.gi-form .gi-campos input:focus,.gi-form .gi-campos select:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(11,27,54,.08)}
+.gi-form-rodape{display:flex;justify-content:flex-end}
+.gi-btn{font:inherit;font-weight:700;font-size:.9rem;background:var(--navy);color:#fff;border:0;border-radius:10px;padding:11px 20px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:opacity .15s,transform .15s}
+.gi-btn:hover{opacity:.92;transform:translateY(-1px)}
+.gi-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+@media (max-width:860px){
+  .gi-linha{grid-template-columns:44px auto minmax(0,1fr) auto;grid-template-areas:"sw nome nome acoes" ". status quem quem";gap:4px 10px;padding:10px 14px}
+  .gi-linha>.switch{grid-area:sw}.gi-nome{grid-area:nome}.gi-status{grid-area:status;justify-self:start}.gi-quem{grid-area:quem}.gi-acoes{grid-area:acoes}
+  .gi-campos{grid-template-columns:1fr}
+  .gi-form-rodape .gi-btn{width:100%;justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){.gi-linha,.gi-btn,.gi-btn-sec,body.coord .switch,body.coord .switch .knob{transition:none}.gi-btn:hover{transform:none}}
 .sep-login{border:0;border-top:1px solid rgba(122,168,212,.25);margin:6px 0 2px;width:100%}
 .login-head p{color:var(--sky)}
 .login .link{color:var(--sky)}
@@ -784,7 +861,7 @@ function viewCorretores(){
   const rows=[...perfis.entries()].sort((a,b)=>nomeParc(a[1].parceiro).localeCompare(nomeParc(b[1].parceiro))||a[1].nome.localeCompare(b[1].nome));
   const ativos=rows.filter(([,p])=>ativoNoMes(p,mes)).length,semAno=rows.filter(([,p])=>!p.ano).length;
   const pend=naEscalaSemCadastro();
-  let h=`<div class="toolbar">${mesNav()}<span class="note">${ativos} ativos em ${mesMin(mes)}${semAno?` · ${semAno} sem ano de nascimento (ainda sem acesso)`:""}</span></div>`;
+  let h=`<div class="pg-cab">${mesNav()}<div class="pg-resumo"><span><b>${ativos}</b> ativos em ${mesMin(mes)}</span>${semAno?`<span class="pg-sep" aria-hidden="true">·</span><span><b>${semAno}</b> sem ano de nascimento</span>`:""}</div></div>`;
   h+=cardGestoresImob();
   const ant=antigos();
   if(ant.length)h+=`<section class="card note-card warn"><h2>Atualizar acesso (${ant.length})</h2><p>${ant.map(([,p])=>esc(p.nome)).join(", ")} ${ant.length===1?"foi cadastrado(a)":"foram cadastrados"} no formato antigo. Clique para atualizar; sem isso, ${ant.length===1?"ele(a) não consegue":"eles não conseguem"} entrar e não dá para editar o cadastro.</p><div class="row"><button class="btn" data-act="converter" ${ocupado?"disabled":""}>Atualizar acesso</button></div></section>`;
@@ -1179,16 +1256,28 @@ function cardSolicitacoes(){
 }
 function cardGestoresImob(){
   const gs=[...gestores.entries()].sort((a,b)=>nomeParc(a[1].imob).localeCompare(nomeParc(b[1].imob)));
-  return cardSolicitacoes()+`<section class="card dobra-card" data-dobra="gestimob"><h2>Gestores de imobiliária (${gs.length})</h2>
-  <p class="note">“Gestor distribui” ligado: só o gestor da imobiliária escolhe os horários dela.</p>
-  <div class="stack" style="gap:6px">${imobs.map(x=>{const on=distribui.has(x.k),g=gs.filter(([,v])=>v.imob===x.k);
-    return `<div class="row" style="${cores(x.k)}"><button class="switch" role="switch" aria-checked="${on}" data-act="distrib" data-k="${esc(x.k)}" aria-label="Gestor distribui na ${esc(x.nome)}" ${ocupado?"disabled":""}><span class="knob"></span></button><span class="sw"></span><b>${esc(x.nome)}</b><span class="st ${on?"on":""}">${on?"Gestor distribui":"Corretores escolhem"}</span>
-    <span class="note">${g.length?g.map(([,v])=>esc(v.nome)+" ("+esc(v.email)+")").join(", "):"sem gestor"}</span>${g.map(([u,v])=>remGest===u?`<button class="btn sm danger" data-act="remgest" data-uid="${u}">Confirmar</button><button class="btn sm quiet" data-act="noremgest">Cancelar</button>`:`<button class="btn sm quiet" data-act="askremgest" data-uid="${u}" title="Remover ${esc(v.nome)}">Remover ${esc(v.nome.split(" ")[0])}</button>`).join("")}</div>`}).join("")}</div>
-  <form class="form" data-form="novogest">
-  <div class="field"><label for="ng-nome">Nome do gestor</label><input type="text" id="ng-nome" maxlength="60" value="${esc(dval("ng-nome",""))}" required></div>
-  <div class="field"><label for="ng-email">E-mail</label><input type="email" id="ng-email" value="${esc(dval("ng-email",""))}" required></div>
-  <div class="field"><label for="ng-imob">Imobiliária</label><select id="ng-imob" required><option value="">Selecione</option>${imobs.map(x=>`<option value="${esc(x.k)}" ${dval("ng-imob","")===x.k?"selected":""}>${esc(x.nome)}</option>`).join("")}</select></div>
-  <div class="field" style="align-self:end"><button class="btn" type="submit" ${ocupado?"disabled":""}>Cadastrar gestor</button></div></form></section>`;
+  const linhas=imobs.map(x=>{const on=distribui.has(x.k),g=gs.filter(([,v])=>v.imob===x.k);
+    const gestorTxt=g.length?g.map(([,v])=>`<span class="gi-gestor"><b>${esc(v.nome)}</b><span>${esc(v.email)}</span></span>`).join(""):`<span class="gi-sem">sem gestor</span>`;
+    const acoes=g.map(([u,v])=>remGest===u?`<span class="gi-conf">Remover ${esc(v.nome.split(" ")[0])}? <button class="gi-btn-sec" data-act="remgest" data-uid="${u}">Confirmar</button><button class="gi-link" data-act="noremgest">Cancelar</button></span>`:`<button class="gi-btn-sec" data-act="askremgest" data-uid="${u}" title="Remover ${esc(v.nome)}">Remover</button>`).join("");
+    return `<div class="gi-linha ${on?"is-on":""}">
+      <button class="switch" role="switch" aria-checked="${on}" data-act="distrib" data-k="${esc(x.k)}" aria-label="Gestor distribui na ${esc(x.nome)}" ${ocupado?"disabled":""}><span class="knob"></span></button>
+      <span class="gi-nome" style="${cores(x.k)}"><span class="sw"></span><b>${esc(x.nome)}</b></span>
+      <span class="gi-status ${on?"on":""}">${on?"Gestor distribui":"Corretores escolhem"}</span>
+      <span class="gi-quem">${gestorTxt}</span>
+      <span class="gi-acoes">${acoes}</span></div>`}).join("");
+  return cardSolicitacoes()+`<section class="card gi-card">
+  <div class="gi-cab"><span class="gi-ic" aria-hidden="true">${ICONES.corretores}</span><div><h2>Gestores de imobiliária <span class="gi-num">${gs.length}</span></h2>
+  <p class="note">“Gestor distribui” ligado: só o gestor da imobiliária escolhe os horários dela.</p></div></div>
+  <div class="gi-lista" role="list">${linhas}</div>
+  <form class="gi-form" data-form="novogest">
+    <div class="gi-form-cab"><span class="gi-mais" aria-hidden="true">+</span><div><b>Cadastrar gestor</b><span>Adicione um gestor para uma imobiliária. Ele recebe um e-mail para criar a senha.</span></div></div>
+    <div class="gi-campos">
+      <div class="field"><label for="ng-nome">Nome do gestor</label><input type="text" id="ng-nome" maxlength="60" value="${esc(dval("ng-nome",""))}" placeholder="Digite o nome" required></div>
+      <div class="field"><label for="ng-email">E-mail</label><input type="email" id="ng-email" value="${esc(dval("ng-email",""))}" placeholder="nome@imobiliaria.com.br" required></div>
+      <div class="field"><label for="ng-imob">Imobiliária</label><select id="ng-imob" required><option value="">Selecione</option>${imobs.map(x=>`<option value="${esc(x.k)}" ${dval("ng-imob","")===x.k?"selected":""}>${esc(x.nome)}</option>`).join("")}</select></div>
+    </div>
+    <div class="gi-form-rodape"><button class="gi-btn" type="submit" ${ocupado?"disabled":""}><span aria-hidden="true">+</span> Cadastrar gestor</button></div>
+  </form></section>`;
 }
 /* ---------- calendário (.ics) ---------- */
 // Horários do stand são de Brasília/Bahia (UTC−3, sem horário de verão): convertidos para UTC no arquivo.
@@ -1372,6 +1461,8 @@ function render(){
   document.body.classList.toggle("modo-login",naEntrada);
   document.body.classList.toggle("corretor",!naEntrada&&!isAdmin&&!isGestor);
   document.body.classList.toggle("noturno",!naEntrada&&!isAdmin&&!isGestor&&noturno);
+  document.body.classList.toggle("coord",!naEntrada&&isAdmin);
+  document.body.classList.toggle("tela-corretores",!naEntrada&&isAdmin&&tab==="corretores");
   root.innerHTML=h;
   root.querySelectorAll("[data-dobra]").forEach(el=>{if(!abertos.has(el.dataset.dobra))el.classList.add("fechado")});
   if(fid){const n=document.getElementById(fid);if(n){n.focus();try{if(ss!=null)n.setSelectionRange(ss,se)}catch(e){}}}
