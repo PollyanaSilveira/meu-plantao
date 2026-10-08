@@ -1044,8 +1044,8 @@ function viewRelatorios(){
   </div></section>
   <div class="stats"><div class="stat"><b>${d.total}</b><span>${relTipo==="livres"?"horários livres":"plantões"}</span></div><div class="stat"><b>${d.horas}h</b><span>de plantão</span></div>${d.pessoas!==undefined?`<div class="stat"><b>${d.pessoas}</b><span>corretores</span></div>`:""}</div>`;
   if(!d.linhas.length)return h+`<div class="vazio"><b>Nada para mostrar</b><span>Não há ${relTipo==="livres"?"horários livres":"plantões"} em ${mesMin(mes)} com esses filtros.</span></div>`;
-  h+=`<section class="card"><h2>${TIPOS[relTipo]} · ${nomeMes(mes)}${filtroTxt()?` · ${esc(filtroTxt())}`:""}</h2><div class="tablewrap"><table><thead><tr>${d.cab.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${d.linhas.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>`;
-  return h;
+  // Os dados detalhados ficam só no PDF; a tela mostra filtros e totais.
+  return h+`<p class="note" style="margin:4px 2px">Escolha o relatório e clique em <b>Baixar PDF</b> para ver os detalhes.</p>`;
 }
 const IC=(d)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const ICONES={
