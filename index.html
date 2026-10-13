@@ -472,7 +472,7 @@ if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.l
 let noturno=(()=>{try{return localStorage.getItem("mp-tema")==="noturno"}catch(x){return false}})(),orientCat=0,lbCorAberto=new Set(),ajusteCi=null,libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,splashAte=0,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
-let loginModo="escolha",loginErr="",gestorNovo=false,lote=null;
+let loginModo="escolha",barrado="",loginErr="",gestorNovo=false,lote=null;
 const hoje=new Date();const pad=n=>String(n).padStart(2,"0");
 const hojeStr=`${hoje.getFullYear()}-${pad(hoje.getMonth()+1)}-${pad(hoje.getDate())}`;
 let mes=hojeStr.slice(0,7),mesEscolhido=false,tab="minhas",confirmId=null,desistirId=null,editId=null,delId=null,libEdit=null,remId=null,soMinhas=false,verPassados=false,limparLivres=false,ocupado=false;
@@ -1500,7 +1500,7 @@ async function act(a,ds){
     case "gestornovo":gestorNovo=!gestorNovo;loginErr="";break;
     case "sair":menuAberto=false;await signOut(auth);return;
     case "trocasenha":menuAberto=false;senhaErr="";tab="senha";break;
-    case "fechasenha":senhaErr="";tab=isAdmin?"checkin":"distribuir";break;
+    case "fechasenha":senhaErr="";tab=isAdmin?"escala":"distribuir";break;
     case "menu":menuAberto=!menuAberto;break;
     case "tab":tab=ds.v;confirmId=desistirId=editId=libEdit=null;break;
     case "mes":mudaMes(+ds.d);break;
@@ -1836,7 +1836,7 @@ async function submit(form){
     if(senhaErr){render();return}
     ocupado=true;render();
     try{await reauthenticateWithCredential(auth.currentUser,EmailAuthProvider.credential(auth.currentUser.email,atual));
-      await updatePassword(auth.currentUser,nova);tab=isAdmin?"checkin":"distribuir";toast("Senha alterada. Use a nova senha no próximo acesso.")}
+      await updatePassword(auth.currentUser,nova);tab=isAdmin?"escala":"distribuir";toast("Senha alterada. Use a nova senha no próximo acesso.")}
     catch(e){const c=e&&e.code;senhaErr=(c==="auth/invalid-credential"||c==="auth/wrong-password"||c==="auth/invalid-login-credentials")?"A senha atual não confere.":c==="auth/weak-password"?"A nova senha precisa ter pelo menos 6 caracteres.":c==="auth/too-many-requests"?"Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.":"Não foi possível alterar agora. Tente de novo."}
     finally{ocupado=false;render()}}
   else if(f==="novogest"){if(await cadastrarGestor(g("ng-nome"),g("ng-email"),g("ng-imob"))){["ng-nome","ng-email","ng-imob"].forEach(k=>delete drafts[k]);render()}}
@@ -1909,6 +1909,11 @@ async function iniciar(u){
     if(!isAdmin){const gi=await getDoc(doc(fs,"gestoresImob",u.uid));if(gi.exists()){isGestor=true;gImob=gi.data().imob}}
     if(!isAdmin&&!isGestor){const p=await getDoc(doc(fs,"perfis",u.uid));perfil=p.exists()?p.data():null}
   }catch(e){console.error(e)}
+  // Cada porta de entrada só aceita o próprio tipo de conta: coordenação pelo acesso da coordenação, gestor pelo da imobiliária.
+  const errado=loginModo==="gestor"&&!gestorNovo&&!isAdmin?"Este acesso não é da coordenação. Volte e entre por “Imobiliária”."
+    :loginModo==="imob"&&(isAdmin||perfil)?(isAdmin?"Esta é uma conta da coordenação. Volte e entre pelo acesso da coordenação.":"Esta conta não é de gestor de imobiliária.")
+    :loginModo==="corretor"&&(isAdmin||isGestor)?"Esta conta não é de corretor.":"";
+  if(errado){barrado=loginModo;loginErr=errado;splashAte=0;isAdmin=false;isGestor=false;gImob="";perfil=null;await signOut(auth);return}
   if(!isAdmin&&!isGestor&&!perfil){
     try{const sp=await getDoc(doc(fs,"solicitacoes",u.uid));if(sp.exists()){pedido=sp.data();fase="pendente";render();
       // quando a coordenação aprovar, entra sozinho
@@ -1944,7 +1949,7 @@ if(configurado){
   onSnapshot(doc(fs,"publico","distribui"),s=>{distribui=new Set(s.exists()?(s.data().imobs||[]):[]);render()},e=>console.error(e));
   onAuthStateChanged(auth,u=>{
     if(cadastrando)return;
-    if(!u){loginModo="escolha";parar();me=null;isAdmin=false;isGestor=false;gImob="";perfil=null;fase="login";render();return}
+    if(!u){loginModo=barrado||"escolha";barrado="";parar();me=null;isAdmin=false;isGestor=false;gImob="";perfil=null;fase="login";render();return}
     iniciar(u);
   });
 }else render();
