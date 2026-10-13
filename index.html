@@ -469,7 +469,7 @@ const configurado=!String(firebaseConfig.apiKey||"").includes("COLE");
 let auth,fs,auth2;
 if(configurado){const app=initializeApp(firebaseConfig);auth=getAuth(app);auth.languageCode="pt";fs=getFirestore(app);auth2=getAuth(initializeApp(firebaseConfig,"cadastro"))}
 
-let noturno=(()=>{try{return localStorage.getItem("mp-tema")==="noturno"}catch(x){return false}})(),orientCat=0,lbCorAberto=new Set(),ajusteCi=null,libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,splashAte=0,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null;
+let noturno=(()=>{try{return localStorage.getItem("mp-tema")==="noturno"}catch(x){return false}})(),orientCat=0,lbCorAberto=new Set(),ajusteCi=null,libsImob=new Map(),solicitacoes=new Map(),pedido=null,pedindo=false,boasVindas=false,splashAte=0,isGestor=false,gImob="",distribui=new Set(),gestores=new Map(),remGest=null,admins=new Map(),remAdm=null;
 let me=null,isAdmin=false,perfil=null,fase=configurado?"carregando":"semconfig",cadastrando=false;
 let cfg={...DEF_CFG},cfgExiste=null,imobs=[],vagas=new Map(),privs=new Map(),perfis=new Map(),libs=new Map(),subs=[];
 let loginModo="escolha",barrado="",loginErr="",gestorNovo=false,lote=null;
@@ -1050,7 +1050,38 @@ function viewSenha(){
   <div class="field"><label for="sn-conf">Repita a nova senha</label><input type="password" id="sn-conf" autocomplete="new-password" minlength="6" required></div>
   ${senhaErr?`<p class="err" role="alert" style="margin:0">${esc(senhaErr)}</p>`:""}
   <div class="row"><button class="btn" type="submit" ${ocupado?"disabled":""}>Salvar nova senha</button><button class="btn quiet" type="button" data-act="fechasenha">Cancelar</button></div>
+  </form></section>${isAdmin?cardContasCoord():""}`;
+}
+// Contas da coordenação: adicionar (a pessoa recebe e-mail para criar a senha) ou remover o acesso.
+function cardContasCoord(){
+  const lista=[...admins.entries()].sort((x,y)=>String(x[1].email||"").localeCompare(String(y[1].email||"")));
+  const linhas=lista.map(([u,a])=>{const eu=me&&u===me.uid;
+    const acao=eu?`<span class="note">você</span>`:remAdm===u?`<span class="gi-conf">Remover acesso? <button class="gi-btn-sec" data-act="remadm" data-uid="${u}">Confirmar</button><button class="gi-link" data-act="noremadm">Cancelar</button></span>`:`<button class="gi-btn-sec" data-act="askremadm" data-uid="${u}">Remover</button>`;
+    return `<div class="gi-linha"><span class="gi-quem"><span class="gi-gestor">${esc(a.nome||a.email||"Conta sem e-mail")}${a.nome&&a.email?` <span>(${esc(a.email)})</span>`:""}</span></span><span class="gi-acoes">${acao}</span></div>`}).join("");
+  return `<section class="card" style="max-width:720px"><h2>Contas da coordenação <span class="gi-num">${lista.length}</span></h2>
+  <p class="note">Quem está nesta lista entra pelo acesso da coordenação e tem controle total do sistema.</p>
+  <div class="gi-lista" role="list" style="margin-top:8px">${linhas}</div>
+  <form class="gi-form" data-form="novoadm" style="grid-template-columns:1fr">
+    <div class="gi-form-cab"><span class="gi-pessoa" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.9-3.8 3.8-6 7.5-6s6.6 2.2 7.5 6"/></svg></span><div><b>Adicionar conta da coordenação</b><span>A pessoa recebe um e-mail para criar a própria senha.</span></div></div>
+    <div class="gi-campos" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <div class="field"><label for="na-nome">Nome</label><input type="text" id="na-nome" maxlength="60" value="${esc(dval("na-nome",""))}" placeholder="Digite o nome" required></div>
+      <div class="field"><label for="na-email">E-mail</label><input type="email" id="na-email" value="${esc(dval("na-email",""))}" placeholder="nome@almeidacarneiro.com.br" required></div>
+    </div>
+    <div class="gi-form-rodape"><button class="gi-btn" type="submit" ${ocupado?"disabled":""}><span aria-hidden="true">+</span> Adicionar conta</button></div>
   </form></section>`;
+}
+async function cadastrarCoord(nome,email){
+  nome=String(nome||"").trim();email=String(email||"").trim().toLowerCase();
+  if(!nome||!email){toast("Preencha nome e e-mail.");return false}
+  let ok=false;
+  await run(async()=>{
+    const cred=await createUserWithEmailAndPassword(auth2,email,senhaAleatoria());
+    try{await setDoc(doc(fs,"admins",cred.user.uid),{nome,email,criadoEm:new Date().toISOString()})}
+    catch(e){try{await cred.user.delete()}catch(x){} throw e}
+    finally{try{await signOut(auth2)}catch(x){}}
+    await sendPasswordResetEmail(auth,email);ok=true;
+  },`Conta da coordenação criada. ${email} vai receber um e-mail para criar a senha.`);
+  return ok;
 }
 function viewRelatorios(){
   const d=relDados();
@@ -1606,6 +1637,9 @@ async function act(a,ds){
     case "recusar":{const u=ds.uid,x=solicitacoes.get(u);return run(()=>deleteDoc(doc(fs,"solicitacoes",u)),`Solicitação de ${x?.nome||""} recusada.`)}
     case "askremgest":remGest=ds.uid;break;
     case "noremgest":remGest=null;break;
+    case "askremadm":remAdm=ds.uid;break;
+    case "noremadm":remAdm=null;break;
+    case "remadm":{const a=admins.get(ds.uid);remAdm=null;if(me&&ds.uid===me.uid)return;return run(()=>deleteDoc(doc(fs,"admins",ds.uid)),`${a?.nome||a?.email||"Conta"} não tem mais acesso da coordenação.`)}
     case "remgest":{const g=gestores.get(ds.uid);remGest=null;return run(()=>deleteDoc(doc(fs,"gestoresImob",ds.uid)),`${g?.nome||"Gestor"} não tem mais acesso de gestor.`)}
     case "esqueci":{const em=(document.getElementById("gs-email")?.value||"").trim();if(!em){loginErr="Digite seu e-mail acima e toque em “Esqueci minha senha”.";break}
       try{await sendPasswordResetEmail(auth,em);loginErr="";toast("Enviamos um e-mail para criar uma nova senha. Confira também o spam.")}catch(e){loginErr=authMsg(e)}break}
@@ -1841,6 +1875,7 @@ async function submit(form){
       await updatePassword(auth.currentUser,nova);tab=isAdmin?"escala":"distribuir";toast("Senha alterada. Use a nova senha no próximo acesso.")}
     catch(e){const c=e&&e.code;senhaErr=(c==="auth/invalid-credential"||c==="auth/wrong-password"||c==="auth/invalid-login-credentials")?"A senha atual não confere.":c==="auth/weak-password"?"A nova senha precisa ter pelo menos 6 caracteres.":c==="auth/too-many-requests"?"Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.":"Não foi possível alterar agora. Tente de novo."}
     finally{ocupado=false;render()}}
+  else if(f==="novoadm"){if(await cadastrarCoord(g("na-nome"),g("na-email"))){["na-nome","na-email"].forEach(k=>delete drafts[k]);render()}}
   else if(f==="novogest"){if(await cadastrarGestor(g("ng-nome"),g("ng-email"),g("ng-imob"))){["ng-nome","ng-email","ng-imob"].forEach(k=>delete drafts[k]);render()}}
   else if(f==="cfg"){
     const fer=g("cf-fer").split(/[,;\s]+/).filter(Boolean).map(s=>{const m=s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);return m?`${m[3]||mes.slice(0,4)}-${pad(+m[2])}-${pad(+m[1])}`:null}).filter(Boolean);
@@ -1928,6 +1963,7 @@ async function iniciar(u){
     if(!mesEscolhido&&!s.metadata.fromCache){mesEscolhido=true;const ms=[...new Set(s.docs.map(d=>d.data().mes).filter(Boolean))].sort();if(ms.length&&!ms.includes(mes))mes=ms.find(m=>m>=mes)||ms[ms.length-1]}
     render()},falha));
   if(isAdmin){
+    subs.push(onSnapshot(collection(fs,"admins"),s=>{admins=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
     subs.push(onSnapshot(collection(fs,"credenciais"),s=>{creds=new Map(s.docs.map(d=>[d.id,d.data()]))},falha));
     subs.push(onSnapshot(collection(fs,"privado"),s=>{privs=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
     subs.push(onSnapshot(collection(fs,"perfis"),s=>{perfis=new Map(s.docs.map(d=>[d.id,d.data()]));render()},falha));
