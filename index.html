@@ -453,7 +453,7 @@ td.n{font-variant-numeric:tabular-nums}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, collection, query, where, onSnapshot, getDoc, setDoc, updateDoc, deleteDoc, addDoc, writeBatch, runTransaction, arrayRemove, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -1038,6 +1038,19 @@ function relDados(){
   return {cab:["Data","Dia","Horário","Corretor","Imobiliária","Local","Situação"],linhas:lista.map(v=>[ddmm(v.data),DOW[dowOf(v.data)],`${v.ini} às ${v.fim}`,quem(v)||"—",nomeParc(parcDe(v))||"—",v.local||"—",statusDe(v)]),total:lista.length,horas:lista.reduce((a,v)=>a+hrs(v),0)};
 }
 function filtroTxt(){const f=[];if(relImob)f.push(nomeParc(relImob));if(relCor)f.push(perfis.get(relCor)?.nome||"");return f.filter(Boolean).join(" · ")}
+// Troca da senha de quem entra com e-mail e senha (coordenação e gestor de imobiliária).
+let senhaErr="";
+function viewSenha(){
+  return `<section class="card" style="max-width:520px"><h2>Alterar senha</h2>
+  <p class="note">Acesso: ${esc(me&&me.email||"")}</p>
+  <form class="stack" data-form="senha" style="margin-top:12px">
+  <div class="field"><label for="sn-atual">Senha atual</label><input type="password" id="sn-atual" autocomplete="current-password" required></div>
+  <div class="field"><label for="sn-nova">Nova senha</label><input type="password" id="sn-nova" autocomplete="new-password" minlength="6" required></div>
+  <div class="field"><label for="sn-conf">Repita a nova senha</label><input type="password" id="sn-conf" autocomplete="new-password" minlength="6" required></div>
+  ${senhaErr?`<p class="err" role="alert" style="margin:0">${esc(senhaErr)}</p>`:""}
+  <div class="row"><button class="btn" type="submit" ${ocupado?"disabled":""}>Salvar nova senha</button><button class="btn quiet" type="button" data-act="fechasenha">Cancelar</button></div>
+  </form></section>`;
+}
 function viewRelatorios(){
   const d=relDados();
   const optI=imobs.map(x=>`<option value="${esc(x.k)}" ${relImob===x.k?"selected":""}>${esc(x.nome)}</option>`).join("");
@@ -1456,11 +1469,11 @@ function render(){
     const nome=isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome.split(" ")[0]);
     const sub=(isAdmin||isGestor)?esc(me.email||""):esc(nomeParc(perfil.parceiro));
     const ini=(isAdmin||isGestor)?"G":esc(perfil.nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase());
-    const corpo=tab==="calgestor"?viewCalGestor():tab==="meuscor"?viewMeusCorretores():tab==="distribuir"?viewDistribuir():tab==="checkin"?((isAdmin||isGestor)?viewCheckinGestor():viewCheckinCorretor()):tab==="minhas"?viewMinhas():tab==="escolher"?viewEscolher():tab==="escala"?viewEscala():tab==="liberar"?viewLiberar():tab==="horarios"?viewHorarios():tab==="corretores"?viewCorretores():tab==="relatorios"?viewRelatorios():viewAjustes();
+    const corpo=tab==="senha"?viewSenha():tab==="calgestor"?viewCalGestor():tab==="meuscor"?viewMeusCorretores():tab==="distribuir"?viewDistribuir():tab==="checkin"?((isAdmin||isGestor)?viewCheckinGestor():viewCheckinCorretor()):tab==="minhas"?viewMinhas():tab==="escolher"?viewEscolher():tab==="escala"?viewEscala():tab==="liberar"?viewLiberar():tab==="horarios"?viewHorarios():tab==="corretores"?viewCorretores():tab==="relatorios"?viewRelatorios():viewAjustes();
     h=`<div class="wrap"><header class="top"><div class="marca-nome">${LOGO}<span class="sep" aria-hidden="true"></span><h1>Meu Plantão</h1></div>
     <div class="who">${!isAdmin&&!isGestor?`<button class="tema-btn" data-act="tema" aria-pressed="${noturno}" aria-label="${noturno?"Usar modo claro":"Usar modo noturno"}" title="${noturno?"Modo claro":"Modo noturno"}">${noturno?"☀":"☾"}</button>`:""}${(()=>{if(!Array.isArray(cfg.abertos))return `<span class="pill ${cfg.aberta!==false?"ok":"warn"}">${cfg.aberta!==false?"Escala em aberto":"Escala fechada"}</span>`;const ab=mesesAbertos();return `<span class="pill ${ab.length?"ok":"warn"}">${ab.length?ab.map(m=>MESES[+m.slice(5,7)-1]).join(", ")+" em aberto":"Escala fechada"}</span>`})()}
     <div class="usermenu"><button class="userbtn" data-act="menu" aria-haspopup="menu" aria-expanded="${menuAberto}"><span class="av">${ini}</span><span class="nm">${nome}</span>${ICONES.seta}</button>
-    ${menuAberto?`<div class="dropdown" role="menu"><div class="info"><b>${isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome)}</b><span>${sub}</span></div>${!isAdmin&&!isGestor?`<button role="menuitem" data-act="tema">${noturno?"☀ Modo claro":"☾ Modo noturno"}</button>`:""}<button role="menuitem" data-act="sair">${ICONES.sair}Sair</button></div>`:""}</div></div></header>
+    ${menuAberto?`<div class="dropdown" role="menu"><div class="info"><b>${isAdmin?"Gestor":isGestor?`Gestor · ${esc(nomeParc(gImob))}`:esc(perfil.nome)}</b><span>${sub}</span></div>${!isAdmin&&!isGestor?`<button role="menuitem" data-act="tema">${noturno?"☀ Modo claro":"☾ Modo noturno"}</button>`:""}${isAdmin||isGestor?`<button role="menuitem" data-act="trocasenha">Alterar senha</button>`:""}<button role="menuitem" data-act="sair">${ICONES.sair}Sair</button></div>`:""}</div></div></header>
     <nav class="tabs" role="tablist" aria-label="Seções">${T.map(([k,l,n])=>`<button class="tab" role="tab" data-act="tab" data-v="${k}" aria-selected="${tab===k}">${ICONES[k]||""}${l}${n!==undefined?`<span class="n">${n}</span>`:""}</button>`).join("")}</nav>
     <main class="list">${corpo}</main></div>`;
   }
@@ -1486,6 +1499,8 @@ async function act(a,ds){
     case "pedir":pedindo=ds.v==="1";loginErr="";break;
     case "gestornovo":gestorNovo=!gestorNovo;loginErr="";break;
     case "sair":menuAberto=false;await signOut(auth);return;
+    case "trocasenha":menuAberto=false;senhaErr="";tab="senha";break;
+    case "fechasenha":senhaErr="";tab=isAdmin?"checkin":"distribuir";break;
     case "menu":menuAberto=!menuAberto;break;
     case "tab":tab=ds.v;confirmId=desistirId=editId=libEdit=null;break;
     case "mes":mudaMes(+ds.d);break;
@@ -1813,6 +1828,17 @@ async function submit(form){
     else if(g("sd-coord")){toast("Coordenadas inválidas. Use o formato: -14.79, -39.27");return}
     else if(stand)stand={...stand,raio};
     await run(()=>updateDoc(doc(fs,"config","geral"),{...(stand?{stand}:{}),tolerancia:tol}),"Local do stand salvo.");["sd-coord","sd-raio","sd-tol"].forEach(k=>delete drafts[k]);render()}
+  else if(f==="senha"){
+    const atual=document.getElementById("sn-atual").value,nova=document.getElementById("sn-nova").value,conf=document.getElementById("sn-conf").value;senhaErr="";
+    if(nova.length<6)senhaErr="A nova senha precisa ter pelo menos 6 caracteres.";
+    else if(nova!==conf)senhaErr="A nova senha e a repetição não estão iguais.";
+    else if(nova===atual)senhaErr="A nova senha precisa ser diferente da atual.";
+    if(senhaErr){render();return}
+    ocupado=true;render();
+    try{await reauthenticateWithCredential(auth.currentUser,EmailAuthProvider.credential(auth.currentUser.email,atual));
+      await updatePassword(auth.currentUser,nova);tab=isAdmin?"checkin":"distribuir";toast("Senha alterada. Use a nova senha no próximo acesso.")}
+    catch(e){const c=e&&e.code;senhaErr=(c==="auth/invalid-credential"||c==="auth/wrong-password"||c==="auth/invalid-login-credentials")?"A senha atual não confere.":c==="auth/weak-password"?"A nova senha precisa ter pelo menos 6 caracteres.":c==="auth/too-many-requests"?"Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.":"Não foi possível alterar agora. Tente de novo."}
+    finally{ocupado=false;render()}}
   else if(f==="novogest"){if(await cadastrarGestor(g("ng-nome"),g("ng-email"),g("ng-imob"))){["ng-nome","ng-email","ng-imob"].forEach(k=>delete drafts[k]);render()}}
   else if(f==="cfg"){
     const fer=g("cf-fer").split(/[,;\s]+/).filter(Boolean).map(s=>{const m=s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);return m?`${m[3]||mes.slice(0,4)}-${pad(+m[2])}-${pad(+m[1])}`:null}).filter(Boolean);
