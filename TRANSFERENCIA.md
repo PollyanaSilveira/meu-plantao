@@ -100,11 +100,19 @@ Se o projeto Firebase estiver em plano pago (Blaze), a conta de faturamento tamb
 
 ### 4.3 Acesso de coordenação dentro do app
 
-O acesso de coordenação é separado do dono do Firebase. Para o novo responsável virar coordenação no app:
+O acesso de coordenação é separado do dono do Firebase. O jeito mais fácil de dar acesso ao novo responsável é pelo próprio app:
 
-1. No console do Firebase, em **Authentication → Usuários**, crie um usuário com o e-mail dele. Ou deixe que ele crie a própria senha pelo "Esqueci a senha".
+1. A Pollyana entra como coordenação, clica no nome dela (canto superior direito) e depois em **Editar**.
+2. Na página **Editar acesso**, em **Contas da coordenação**, preenche o nome e o e-mail do novo responsável e clica em **+ Adicionar conta**.
+3. Ele recebe um e-mail para criar a própria senha e passa a entrar pelo acesso da **Coordenação**.
+
+Na mesma página, cada pessoa da coordenação pode **alterar a própria senha** e **remover** outras contas da coordenação. A própria conta não pode ser removida.
+
+Se o app não estiver acessível, dá para fazer pelo console:
+
+1. Em **Authentication → Usuários**, crie um usuário com o e-mail dele.
 2. Copie o **UID** desse usuário.
-3. Em **Firestore → admins**, crie um documento com esse UID como ID. O conteúdo pode ser `{ "email": "..." }`.
+3. Em **Firestore → admins**, crie um documento com esse UID como ID, com o conteúdo `{ "nome": "...", "email": "..." }`.
 
 ## 5. Como fazer mudanças
 

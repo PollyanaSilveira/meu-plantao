@@ -54,6 +54,12 @@ Você vai trabalhar no **Meu Plantão**, aplicativo web da **Almeida Carneiro** 
    - Por baixo, cada corretor tem uma conta Firebase com e-mail e senha internos. Esses dados ficam em `credenciais/{uid}`, coleção que só a coordenação lê.
    - O documento `logins/{imobiliária--nome--ano}` aponta para essa conta. Ele aceita leitura direta, nunca listagem.
 
+**Cada porta de entrada aceita só o próprio tipo de conta.** Se uma conta de gestor tentar entrar pela Coordenação, ou se a coordenação entrar por Imobiliária, o sistema sai na hora e mostra um aviso dizendo qual acesso usar. Ao entrar pela porta certa, cada perfil abre na sua aba inicial:
+
+- **Coordenação:** Escala.
+- **Gestor de imobiliária:** Distribuir horários.
+- **Corretor:** Visão geral.
+
 **Tela de entrada.**
 
 - Fundo azul-marinho, com a logo da Almeida Carneiro.
@@ -168,6 +174,16 @@ Os filtros são imobiliária e corretor.
 - Tolerância de atraso.
 - Texto das **Orientações do Plantão**.
 
+#### 3.9 Editar acesso (menu do usuário)
+
+No canto superior direito, o menu com o nome tem a opção **Editar** (ícone de lápis). Ela abre a página **Editar acesso**, que tem duas partes:
+
+- **Alterar senha.** Pede a senha atual, a nova senha (mínimo de 6 caracteres) e a repetição. Usa `reauthenticateWithCredential` e `updatePassword`. O gestor de imobiliária também tem essa opção.
+- **Contas da coordenação** (só para a coordenação).
+  - Lista as contas de `admins`. A própria conta aparece como "você" e não pode ser removida.
+  - **Remover** tira o acesso de outra conta, com confirmação.
+  - **Adicionar conta da coordenação:** a coordenação informa nome e e-mail. O sistema cria a conta pela instância `"cadastro"`, grava `admins/{uid}` com `{nome, email, criadoEm}` e envia um e-mail para a pessoa criar a própria senha.
+
 ### 4. Gestor de imobiliária
 
 As abas são: **Distribuir horários · Calendário · Meus corretores · Check-in**.
@@ -220,7 +236,7 @@ As abas são: **Visão geral · Check-in · Horários · Calendário**.
 
 | Coleção | Conteúdo |
 |---|---|
-| `admins/{uid}` | Contas da coordenação. |
+| `admins/{uid}` | Contas da coordenação: `{nome, email, criadoEm}`. |
 | `gestoresImob/{uid}` | Gestores de imobiliária. |
 | `solicitacoes/{uid}` | Pedidos de acesso de gestor: `{nome, email, imob, criadoEm}`. |
 | `perfis/{uid}` | Corretor: `{nome, parceiro, key, ano, inativos[], plantao, criadoEm}`. |
